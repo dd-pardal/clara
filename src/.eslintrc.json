@@ -1,0 +1,44 @@
+{
+	"root": true,
+	"parser": "@typescript-eslint/parser",
+	"plugins": [
+		"@typescript-eslint"
+	],
+	"rules": {
+		"indent": ["error", "tab", {
+			"ignoreComments": true,
+			"SwitchCase": 1,
+			"flatTernaryExpressions": true
+		}],
+		"@typescript-eslint/semi": "error",
+		"@typescript-eslint/member-delimiter-style": ["warn", {
+			"singleline": {
+				"delimiter": "semi",
+				"requireLast": true
+			}
+		}],
+		"semi-spacing": "error",
+		"comma-spacing": "error",
+		"no-trailing-spaces": "error",
+
+		"linebreak-style": ["error", "unix"],
+		"eol-last": ["error", "always"],
+
+		"@typescript-eslint/no-unused-vars": "off", // The TypeScript compiler handles that.
+		"@typescript-eslint/ban-ts-comment": "off",
+		"@typescript-eslint/no-inferrable-types": "off",
+		"@typescript-eslint/no-non-null-assertion": "off",
+		"@typescript-eslint/no-explicit-any": "off",
+		"@typescript-eslint/explicit-module-boundary-types": ["warn", {
+			"allowArgumentsExplicitlyTypedAsAny": true
+		}],
+		"no-constant-condition": ["error", { "checkLoops": false }]
+	},
+	"extends": [
+		"eslint:recommended",
+		"plugin:@typescript-eslint/recommended"
+	],
+	"env": {
+		"node": true
+	}
+}
