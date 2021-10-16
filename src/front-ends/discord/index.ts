@@ -405,10 +405,12 @@ Credits:
 		if (guildID !== undefined) {
 			this.#db.updateGuildStatusMessageID(guildID, null);
 		}
+		// @ts-ignore
 		return await new Discord.MessageManager({ client: this.#client, id: broadcastChannelID } as Discord.TextChannel).delete(statusMessageID);
 	}
 
 	async #editStatusMessage(broadcastChannelID: string, statusMessageID: string, statusMessage: string): Promise<Discord.Message> {
+		// @ts-ignore
 		return await new Discord.MessageManager({ client: this.#client, id: broadcastChannelID } as Discord.TextChannel).edit(statusMessageID, { content: statusMessage });
 	}
 
