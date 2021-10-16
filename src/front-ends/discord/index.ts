@@ -376,20 +376,6 @@ Credits:
 						}
 						break;
 
-					case "suggest": {
-						const channel = this.#client.guilds.resolve("834849541303042069")!.channels.resolve("837311512220532765") as Discord.TextChannel;
-
-						const embed = new Discord.MessageEmbed()
-							.setColor('RED')
-							.setAuthor(interaction.user.tag, interaction.user.displayAvatarURL({ dynamic: true }))
-							.setDescription(interaction.options.getString("suggestion", true));
-
-						const msg = await channel.send({ embeds: [embed] });
-						msg.react('👍');
-						msg.react('👎');
-						break;
-					}
-
 					default:
 						console.log("Unimplemented command. Interaction data: %o", interaction);
 						await interaction.reply({ content: `The command \`${interaction.commandName}\` is not implemented yet. Try again later.`, ephemeral: true });
