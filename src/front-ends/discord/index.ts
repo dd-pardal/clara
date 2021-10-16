@@ -477,9 +477,6 @@ Credits:
 
 		const statusMessage = this.#getStatusMessage();
 
-		// @ts-ignore
-		this.#client.api.channels("840924631254171688").messages.post(message).catch(() => {/* ignore error */});
-
 		for (const { guildID, broadcastChannelID, statusMessageID, announcementMentions } of this.#db.getBroadcastInfo()) {
 			const msgOptions = Object.assign({}, message);
 			if (msgOptions.content) {
