@@ -234,6 +234,14 @@ Credits:
 									thumbnail: {
 										url: "https://cdn.discordapp.com/icons/739868777050669056/a_b2404d9081675fc978d6edb6344274c4.gif"
 									}
+								},
+								{
+									title: "C.L.A.R.A.’s GitHub repository",
+									description: "Here you can see my code.",
+									url: "https://github.com/dd-pardal/clara",
+									thumbnail: {
+										url: "https://cdn.discordapp.com/attachments/840924631254171688/900864222177681528/github-mark.png"
+									}
 								}
 							]
 						});
