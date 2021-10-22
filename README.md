@@ -2,9 +2,9 @@
 
 If you’re here, you probably know what this is, so I won’t bother explaining it.
 
-## Running the code yourself
+## Using the code yourself
 
-The main purpose of this repository is for satisfying people’s curiosity about how C.L.A.R.A. works and to help others making similar applications. However, since C.L.A.R.A. is free software, you are free to run it on your machine, provided you follow the terms and conditions in the license. However, the code in this repo needs some prerequisites to run, including:
+The main purpose of this repository is for satisfying people’s curiosity about how C.L.A.R.A. works and to help others making similar applications. However, since C.L.A.R.A. is free software, you are free to run it on your machine. However, the code in this repo needs some prerequisites to run, including:
 
 - An SQLite database with the right tables and columns,
 - JSON data representing the configuration (stored in the database),
@@ -12,6 +12,8 @@ The main purpose of this repository is for satisfying people’s curiosity about
 - A Twitter developer account (application necessary).
 
 These requirements are not optional and if you want to run C.L.A.R.A. without going through the hassle of satisfying all of them, you’ll need to edit the code yourself to remove its dependency on them.
+
+**If you want to publish a bot (or any other piece of software) that includes code from this repository, you must follow the license!** This includes making the source code of your software also publicly available.
 
 ### Instructions
 
