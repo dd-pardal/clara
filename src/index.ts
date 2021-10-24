@@ -88,13 +88,15 @@ const frontEnds: FrontEnd[] = [
 		db,
 		bot,
 		client: discordClient,
-		soundDetector
+		soundDetector,
+		spbDetector
 	}),
 	new TwitterFrontEnd({
 		db,
 		bot,
 		client: twitterClient,
-		soundDetector
+		soundDetector,
+		spbDetector
 	})
 ];
 
