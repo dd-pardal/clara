@@ -7,6 +7,8 @@
 // And no, the channels aren't in the cache for some reason. I don't even care anymore. I'm probably
 // switching to Eris when they add support for interactions.
 
+import * as os from "os";
+
 import * as Discord from "discord.js";
 
 import { FrontEnd } from "../front-end.js";
@@ -18,6 +20,9 @@ import { SoundDetector, Status as SDStatus } from "../../sound-detector/index.js
 import { renderAIReadings } from "../../sound-detector/ai-readings-renderer.js";
 import * as AI from "../../sound-detector/ai.js";
 import { Changes, SPBChangeDetector, PollerChangeType } from "../../starrpark.biz/change-detector.js";
+import { getCPUTemp } from "../../util/cpu-temp.js";
+import { CLARAS_BIRTH_TIMESTAMP } from "../../constants.js";
+import { formatBigInterval } from "../../util/format-time-interval.js";
 
 export class DiscordFrontEnd implements FrontEnd {
 	#db: Database;
@@ -185,6 +190,31 @@ export class DiscordFrontEnd implements FrontEnd {
 						} else {
 							interaction.reply("The sound detector is disabled.");
 						}
+						break;
+					}
+
+					case "bot_stats": {
+						let cpuTemp;
+						try {
+							cpuTemp = (await getCPUTemp()).toFixed(0) + " °C";
+						} catch(err) {
+							cpuTemp = "[unavailable]";
+						}
+
+						interaction.reply({
+							embeds: [
+								{
+									title: "Bot stats",
+									fields: [
+										{ name: "Discord websocket latency", value: `${this.#client.ws.ping}ms` },
+										{ name: "Uptime", value: `Total: ${Math.round((Date.now() - CLARAS_BIRTH_TIMESTAMP) / 86400000)} days\nSystem: ${formatBigInterval(Math.round(os.uptime() / 60))}\nProcess: ${formatBigInterval(Math.round(process.uptime() / 60))}` },
+										{ name: "CPU temperature", value: cpuTemp },
+										{ name: "Load averages", value: process.platform !== "win32" ? os.loadavg().join(", ") : "[unavailable]" }
+									],
+									color: 0xed1e79
+								}
+							]
+						});
 						break;
 					}
 
