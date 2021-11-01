@@ -1,9 +1,8 @@
 import { EventEmitter } from "events";
 
-import { Database } from "../db.js";
 import { Poller, PollerChangeType } from "./poller.js";
-import { crawl } from "./crawler.js";
-import { PathInfoMap } from "./types.js";
+import { Changes, crawl } from "./crawler.js";
+import { PathInfo, PathInfoMap } from "./types.js";
 import agent from "./agent.js";
 import timeout from "../util/timeout.js";
 import * as tconsole from "../util/time-log.js";
@@ -11,17 +10,19 @@ import * as tconsole from "../util/time-log.js";
 export class SPBChangeDetector extends EventEmitter {
 	#poller: Poller;
 	#pathInfoMap: PathInfoMap;
+	#setPathInfo: (pathInfo: PathInfo) => void;
 
 	constructor({
-		db,
-		configs
+		pathInfoMap,
+		setPathInfo
 	}: {
-		db: Database;
-		configs: any;
+		pathInfoMap: PathInfoMap;
+		setPathInfo: (pathInfo: PathInfo) => void;
 	}) {
 		super();
 
-		this.#pathInfoMap = new Map(db.getSPBFileHashes().map(i => [i.path, i]));
+		this.#pathInfoMap = pathInfoMap;
+		this.#setPathInfo = setPathInfo;
 
 		this.#poller = new Poller(this.#pathInfoMap);
 	}
@@ -32,7 +33,7 @@ export class SPBChangeDetector extends EventEmitter {
 			tconsole.log(`Change detected at ${firstDetectionPath}.`);
 			this.#poller.stop();
 			await timeout(5000);
-			const changesPromise = crawl(this.#pathInfoMap);
+			const changesPromise = crawl(this.#pathInfoMap, this.#setPathInfo);
 			this.emit("change", {
 				firstDetectionPath,
 				firstDetectionChangeType,

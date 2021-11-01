@@ -42,8 +42,8 @@ export class Database {
 			getConfigs: this.#sqliteDB.prepare("SELECT data FROM configs"),
 			updateConfigs: this.#sqliteDB.prepare("UPDATE configs SET data=?"),
 
-			getSPBFileHashes: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
-			setSPBFileHash: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
+			getSPBPathInfos: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
+			setSPBPathInfo: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
 		};
 
 		this.configs = JSON.parse(this.#preparedStatements.getConfigs.get().data);
@@ -92,11 +92,11 @@ export class Database {
 	}
 
 
-	getSPBFileHashes(): SPB.PathInfo[] {
-		return this.#preparedStatements.getSPBFileHashes.all() as SPB.PathInfo[];
+	getSPBPathInfos(): SPB.PathInfo[] {
+		return this.#preparedStatements.getSPBPathInfos.all() as SPB.PathInfo[];
 	}
-	setSPBFileHash({ path, hash, eTag }: SPB.PathInfo): void {
-		this.#preparedStatements.setSPBFileHash.run(path, hash, eTag);
+	setSPBPathInfo({ path, hash, eTag }: SPB.PathInfo): void {
+		this.#preparedStatements.setSPBPathInfo.run(path, hash, eTag);
 	}
 
 

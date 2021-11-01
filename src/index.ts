@@ -74,7 +74,10 @@ const bot = new MainBot();
 const db = new Database("./db.sqlite");
 
 const soundDetector = undefined as SoundDetector | undefined;
-const spbDetector = new SPBChangeDetector({ db, configs: db.configs }) as SPBChangeDetector | undefined;
+const spbDetector = new SPBChangeDetector({
+	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
+	setPathInfo: db.setSPBPathInfo.bind(db)
+}) as SPBChangeDetector | undefined;
 
 const discordClient = new Discord.Client({
 	intents: ["GUILDS"]

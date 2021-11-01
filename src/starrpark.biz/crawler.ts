@@ -7,7 +7,7 @@ import * as fsp from "fs/promises";
 import { dirname } from "path";
 import { createHash } from "crypto";
 
-import { PathInfoMap } from "./types.js";
+import { PathInfo, PathInfoMap } from "./types.js";
 import agent from "./agent.js";
 import { formatDateAsISO8601Basic } from "../util/iso8601-basic-format.js";
 
@@ -19,7 +19,14 @@ export interface Changes {
 	modified: string[];
 }
 
-export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
+/**
+ * Crawls the website for changes and saves them as files.
+ * @param pathInfoMap The path info map.
+ * @param setPathInfo A function that is called when and entry is created/updated in the path info map.
+ * @param paths The paths to begin crawling from. Defaults to all paths in `pathInfoMap`.
+ * @returns A promise that resolves to the changes found.
+ */
+export async function crawl(pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: PathInfo) => void, paths?: Iterable<string>): Promise<Changes> {
 	const ARCHIVE_ROOT = `./spb-archive/` + formatDateAsISO8601Basic(new Date());
 
 	const crawledPaths: Set<string> = new Set();
@@ -29,7 +36,7 @@ export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
 		modified: []
 	};
 
-	async function crawlRaw(path: string, eTag?: string | undefined | null) {
+	async function crawlRaw(path: string) {
 		if (path.endsWith("/")) {
 			path += "index.html";
 		}
@@ -43,13 +50,15 @@ export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
 		const promises: Promise<void>[] = [];
 
 		await new Promise<void>((res, rej) => {
+			const pathInfo = pathInfoMap.get(path);
+
 			const req = http.request({
 				agent,
 				protocol: "http:", // Come on, Supercell. You could've added TLS support.
 				host: "1bvfq4fbru.s3-website-us-west-2.amazonaws.com",
 				path: path,
-				headers: eTag != null ? {
-					"if-none-match": eTag
+				headers: pathInfo?.eTag != null ? {
+					"if-none-match": pathInfo.eTag
 				} : {}
 			});
 			req.on("response", (resp) => {
@@ -73,12 +82,17 @@ export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
 
 						const hash = hasher.digest();
 						const prevHash = pathInfoMap.get(path)?.hash;
-						if (prevHash == null) {
-							changes.added.push(path);
-						} else if (!prevHash.equals(hash)) {
-							changes.modified.push(path);
+						if (prevHash?.equals(hash)) {
+							const newPathInfo = { path, hash, eTag: resp.headers.etag ?? null };
+							pathInfoMap.set(path, newPathInfo);
+							setPathInfo(newPathInfo);
+						} else {
+							if (prevHash == null) {
+								changes.added.push(path);
+							} else {
+								changes.modified.push(path);
+							}
 						}
-						pathInfoMap.set(path, { path, hash, eTag: resp.headers.etag ?? null });
 
 						const length = Math.min(0x1000, respBody.length);
 						let invalidBytes = 0;
@@ -100,9 +114,11 @@ export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
 					// It's okay to skip because we know all of the URIs in this file are already in `pathInfos`.
 					res();
 				} else if (resp.statusCode === 403 || resp.statusCode === 404) {
-					if (pathInfoMap.get(path)?.hash != null) {
+					if (pathInfo?.hash != null) {
 						changes.removed.push(path);
-						pathInfoMap.set(path, { path, hash: null, eTag: null });
+						const newPathInfo = { path, hash: null, eTag: null };
+						pathInfoMap.set(path, newPathInfo);
+						setPathInfo(newPathInfo);
 					}
 					res();
 				} else {
@@ -116,7 +132,7 @@ export async function crawl(pathInfoMap: PathInfoMap): Promise<Changes> {
 		await Promise.all(promises);
 	}
 
-	await Promise.all([...pathInfoMap.values()].map(({ path, eTag }) => crawlRaw(path, eTag)));
+	await Promise.all([...paths ?? pathInfoMap.keys()].map(path => crawlRaw(path)));
 
 	return changes;
 }
