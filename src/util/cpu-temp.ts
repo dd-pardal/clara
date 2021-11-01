@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Gets the CPU temperature.
+ */
+
 import { execFile } from "child_process";
 
 const getCPUTempFunctionPromise: Promise<() => Promise<number>> = new Promise((res, rej) => {

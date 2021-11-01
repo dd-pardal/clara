@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Maps internal identifiers to human-readable text.
+ */
+
 import { Status as BotStatus } from "../../bot.js";
 
 export const botStatusToStringMap = new Map([
