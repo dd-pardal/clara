@@ -4,7 +4,6 @@ const getCPUTempFunctionPromise: Promise<() => Promise<number>> = new Promise((r
 	if (process.platform === "linux") {
 		// Check for Raspberry Pi OS
 		execFile("which", ["vcgencmd"], (err, stdout) => {
-			console.log(stdout);
 			if (err) {
 				if (err.killed === false && err.code === 1) {
 					rej(new TypeError("Unsupported OS."));
