@@ -206,7 +206,7 @@ export class DiscordFrontEnd implements FrontEnd {
 								{
 									title: "Bot stats",
 									fields: [
-										{ name: "Discord websocket latency", value: `${this.#client.ws.ping}ms` },
+										{ name: "Discord websocket latency (ping)", value: `${this.#client.ws.ping}ms` },
 										{ name: "Uptime", value: `Total: ${Math.round((Date.now() - CLARAS_BIRTH_TIMESTAMP) / 86400000)} days\nSystem: ${formatBigInterval(Math.round(os.uptime() / 60))}\nProcess: ${formatBigInterval(Math.round(process.uptime() / 60))}` },
 										{ name: "CPU temperature", value: cpuTemp },
 										{ name: "Load averages", value: process.platform !== "win32" ? os.loadavg().map(n => n.toFixed(2)).join(", ") : "[unavailable]" }
