@@ -82,16 +82,13 @@ export async function crawl(pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: Pa
 
 						const hash = hasher.digest();
 						const prevHash = pathInfoMap.get(path)?.hash;
-						if (prevHash?.equals(hash)) {
+						if (prevHash == null) {
+							changes.added.push(path);
+						} else if (!prevHash.equals(hash)) {
+							changes.modified.push(path);
 							const newPathInfo = { path, hash, eTag: resp.headers.etag ?? null };
 							pathInfoMap.set(path, newPathInfo);
 							setPathInfo(newPathInfo);
-						} else {
-							if (prevHash == null) {
-								changes.added.push(path);
-							} else {
-								changes.modified.push(path);
-							}
 						}
 
 						const length = Math.min(0x1000, respBody.length);
