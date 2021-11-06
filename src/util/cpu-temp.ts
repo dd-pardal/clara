@@ -36,6 +36,7 @@ const getCPUTempFunctionPromise: Promise<() => Promise<number>> = new Promise((r
 		rej(new TypeError("Unsupported OS."));
 	}
 });
+getCPUTempFunctionPromise.catch(() => {/* ignore rejection */});
 
 export async function getCPUTemp(): Promise<number> {
 	return (await getCPUTempFunctionPromise)();
