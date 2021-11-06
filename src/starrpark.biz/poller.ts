@@ -18,15 +18,19 @@ export const enum PollerChangeType {
 
 export class Poller extends EventEmitter {
 	pathInfoMap: PathInfoMap;
-	interval = 300;
+	interval: number;
 
 	running = false;
+
+	#requestOptions: http.RequestOptions;
 
 	#timeout: NodeJS.Timeout | undefined;
 	#i: Iterator<PathInfo> | undefined;
 
-	constructor(pathInfoMap: PathInfoMap) {
+	constructor(requestOptions: http.RequestOptions, pollingInterval: number, pathInfoMap: PathInfoMap) {
 		super();
+		this.#requestOptions = requestOptions;
+		this.interval = pollingInterval;
 		this.pathInfoMap = pathInfoMap;
 	}
 
@@ -35,12 +39,11 @@ export class Poller extends EventEmitter {
 		return new Promise((res, rej) => {
 			const req = http.request({
 				agent,
-				protocol: "http:",
-				host: "1bvfq4fbru.s3-website-us-west-2.amazonaws.com",
 				path: path,
 				headers: expectedETag !== null ? {
 					"if-none-match": expectedETag
-				} : {}
+				} : {},
+				...this.#requestOptions
 			});
 			req.on("response", (resp) => {
 				if (resp.statusCode === 200) {

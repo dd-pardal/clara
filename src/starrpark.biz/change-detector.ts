@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import * as http from "http";
 
 import { Poller, PollerChangeType } from "./poller.js";
 import { Changes, crawl } from "./crawler.js";
@@ -9,22 +10,30 @@ import * as tconsole from "../util/time-log.js";
 
 export class SPBChangeDetector extends EventEmitter {
 	#poller: Poller;
+
+	#requestOptions: http.RequestOptions;
+
 	#pathInfoMap: PathInfoMap;
 	#setPathInfo: (pathInfo: PathInfo) => void;
 
 	constructor({
+		requestOptions,
+		pollingInterval,
 		pathInfoMap,
 		setPathInfo
 	}: {
+		requestOptions: http.RequestOptions;
+		pollingInterval: number;
 		pathInfoMap: PathInfoMap;
 		setPathInfo: (pathInfo: PathInfo) => void;
 	}) {
 		super();
 
+		this.#requestOptions = requestOptions;
 		this.#pathInfoMap = pathInfoMap;
 		this.#setPathInfo = setPathInfo;
 
-		this.#poller = new Poller(this.#pathInfoMap);
+		this.#poller = new Poller(this.#requestOptions, pollingInterval, this.#pathInfoMap);
 	}
 
 	start(): void {
@@ -33,7 +42,7 @@ export class SPBChangeDetector extends EventEmitter {
 			tconsole.log(`Change detected at ${firstDetectionPath}.`);
 			this.#poller.stop();
 			await timeout(5000);
-			const changesPromise = crawl(this.#pathInfoMap, this.#setPathInfo);
+			const changesPromise = crawl(this.#requestOptions, this.#pathInfoMap, this.#setPathInfo);
 			this.emit("change", {
 				firstDetectionPath,
 				firstDetectionChangeType,

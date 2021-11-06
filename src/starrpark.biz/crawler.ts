@@ -26,7 +26,7 @@ export interface Changes {
  * @param paths The paths to begin crawling from. Defaults to all paths in `pathInfoMap`.
  * @returns A promise that resolves to the changes found.
  */
-export async function crawl(pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: PathInfo) => void, paths?: Iterable<string>): Promise<Changes> {
+export async function crawl(requestOptions: http.RequestOptions, pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: PathInfo) => void, paths?: Iterable<string>): Promise<Changes> {
 	const ARCHIVE_ROOT = `./spb-archive/` + formatDateAsISO8601Basic(new Date());
 
 	const crawledPaths: Set<string> = new Set();
@@ -54,12 +54,11 @@ export async function crawl(pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: Pa
 
 			const req = http.request({
 				agent,
-				protocol: "http:", // Come on, Supercell. You could've added TLS support.
-				host: "1bvfq4fbru.s3-website-us-west-2.amazonaws.com",
 				path: path,
 				headers: pathInfo?.eTag != null ? {
 					"if-none-match": pathInfo.eTag
-				} : {}
+				} : {},
+				...requestOptions
 			});
 			req.on("response", (resp) => {
 				if (resp.statusCode === 200) {
@@ -74,8 +73,6 @@ export async function crawl(pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: Pa
 						hasher.update(chunk);
 					});
 					resp.on("end", () => {
-						// console.log("END " + path);
-
 						const respBody = Buffer.concat(chunks);
 
 						mkdirPromise.then(() => fsp.writeFile(fsPath, respBody));

@@ -75,6 +75,8 @@ const db = new Database("./db.sqlite");
 
 const soundDetector = undefined as SoundDetector | undefined;
 const spbDetector = new SPBChangeDetector({
+	requestOptions: db.configs.spb.requestOptions,
+	pollingInterval: db.configs.spb.pollingInterval,
 	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
 	setPathInfo: db.setSPBPathInfo.bind(db)
 }) as SPBChangeDetector | undefined;
