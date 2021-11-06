@@ -81,29 +81,32 @@ const spbDetector = new SPBChangeDetector({
 	setPathInfo: db.setSPBPathInfo.bind(db)
 }) as SPBChangeDetector | undefined;
 
-const discordClient = new Discord.Client({
-	intents: ["GUILDS"]
-});
-await discordClient.login(db.configs.discord.auth.token);
-tconsole.log("Connected to Discord.");
-const twitterClient = new TwitterApi(db.configs.twitter.auth).readWrite;
+const frontEnds: FrontEnd[] = [];
 
-const frontEnds: FrontEnd[] = [
-	new DiscordFrontEnd({
+if (db.configs.discord?.enabled) {
+	const discordClient = new Discord.Client({
+		intents: ["GUILDS"]
+	});
+	await discordClient.login(db.configs.discord.auth.token);
+	tconsole.log("Connected to Discord.");
+	frontEnds.push(new DiscordFrontEnd({
 		db,
 		bot,
 		client: discordClient,
 		soundDetector,
 		spbDetector
-	}),
-	new TwitterFrontEnd({
+	}));
+}
+if (db.configs.twitter?.enabled) {
+	const twitterClient = new TwitterApi(db.configs.twitter.auth).readWrite;
+	frontEnds.push(new TwitterFrontEnd({
 		db,
 		bot,
 		client: twitterClient,
 		soundDetector,
 		spbDetector
-	})
-];
+	}));
+}
 
 soundDetector?.start();
 spbDetector?.start();
