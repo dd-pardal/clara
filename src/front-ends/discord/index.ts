@@ -462,7 +462,7 @@ Credits:
 	 */
 	async #sendBroadcastMessage(broadcastChannelID: string, broadcastMessageOptions: Discord.MessageOptions): Promise<Discord.Message> {
 		// @ts-ignore
-		return new Discord.Message(this.#client, await this.#client.api.channels[broadcastChannelID].messages.post({ data: { content: broadcastMessageOptions } }));
+		return new Discord.Message(this.#client, await this.#client.api.channels[broadcastChannelID].messages.post({ data: broadcastMessageOptions }));
 	}
 
 	async #updateStatus(): Promise<void> {
@@ -503,8 +503,8 @@ Credits:
 		await Promise.all(promises);
 	}
 
-	#broadcast(message: Discord.MessageOptions): Promise<Discord.Message[]> {
-		const promises:Promise<Discord.Message>[]  = [];
+	#broadcast(message: Discord.MessageOptions): Promise<(Discord.Message | undefined)[]> {
+		const promises:Promise<(Discord.Message | undefined)>[]  = [];
 
 		const statusMessage = this.#getStatusMessage();
 
@@ -520,7 +520,7 @@ Credits:
 			}
 
 			const promise = this.#sendBroadcastMessage(broadcastChannelID, msgOptions);
-			promises.push(promise);
+			promises.push(promise.catch(() => undefined /* ignore error */));
 			promise
 				.then(() => this.#sendStatusMessage(guildID, broadcastChannelID, statusMessage))
 				.catch(() => {/* ignore error */});
