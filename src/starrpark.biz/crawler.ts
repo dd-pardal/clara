@@ -78,11 +78,13 @@ export async function crawl(requestOptions: http.RequestOptions, pathInfoMap: Pa
 						mkdirPromise.then(() => fsp.writeFile(fsPath, respBody));
 
 						const hash = hasher.digest();
-						const prevHash = pathInfoMap.get(path)?.hash;
-						if (prevHash == null) {
-							changes.added.push(path);
-						} else if (!prevHash.equals(hash)) {
-							changes.modified.push(path);
+						const { hash: prevHash, eTag: prevETag } = pathInfoMap.get(path) ?? {};
+						if (prevHash == null || !hash.equals(prevHash) || resp.headers.etag !== prevETag) {
+							if (prevHash == null) {
+								changes.added.push(path);
+							} else if (!hash.equals(prevHash)) {
+								changes.modified.push(path);
+							}
 							const newPathInfo = { path, hash, eTag: resp.headers.etag ?? null };
 							pathInfoMap.set(path, newPathInfo);
 							setPathInfo(newPathInfo);
