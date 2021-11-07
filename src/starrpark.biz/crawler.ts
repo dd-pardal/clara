@@ -9,7 +9,7 @@ import { createHash } from "crypto";
 
 import { PathInfo, PathInfoMap } from "./types.js";
 import agent from "./agent.js";
-import { formatDateAsISO8601Basic } from "../util/iso8601-basic-format.js";
+import { formatDateTimeAsISO8601Basic } from "../util/format-time.js";
 
 const pathRegex = /(?<=(?<delim>"|'|`)(?:(?:http:)?\/\/1bvfq4fbru\.s3-website-us-west-2\.amazonaws\.com)?)\/[A-z0-9-_.!#$%&][A-z0-9-_./!#$%&]+(?=\k<delim>)/g;
 
@@ -27,7 +27,7 @@ export interface Changes {
  * @returns A promise that resolves to the changes found.
  */
 export async function crawl(requestOptions: http.RequestOptions, pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: PathInfo) => void, paths?: Iterable<string>): Promise<Changes> {
-	const ARCHIVE_ROOT = `./spb-archive/` + formatDateAsISO8601Basic(new Date());
+	const ARCHIVE_ROOT = `./spb-archive/` + formatDateTimeAsISO8601Basic(new Date());
 
 	const crawledPaths: Set<string> = new Set();
 	const changes: Changes = {
