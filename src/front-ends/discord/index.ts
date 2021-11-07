@@ -277,14 +277,9 @@ Credits:
 						});
 						break;
 
-					case "invite": {
-						await interaction.reply('[Click here to add me to your server!](https://wkbrl.netlify.app/clara/invite "Do it.") You should also join [my server](https://discord.gg/rMfURQ98y5) to be updated about new features and changes.');
-						const msg = await interaction.fetchReply();
-						if (msg instanceof Discord.Message) {
-							await msg.suppressEmbeds();
-						}
+					case "invite":
+						await interaction.reply('[Click here to add me to your server!](<https://wkbrl.netlify.app/clara/invite>) You should also join [my server](<https://discord.gg/rMfURQ98y5>) to be updated about new features and changes.');
 						break;
-					}
 
 					case "set_channel":
 						checkPermission((interaction) => {
