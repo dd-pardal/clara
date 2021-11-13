@@ -51,7 +51,7 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#spbDetector = spbDetector;
 
 		if (this.#sd === undefined && this.#spbDetector !== undefined) {
-			this.#client.user?.setActivity({ type: "WATCHING", name: "for changes on StarrPark.biz" });
+			this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
 		}
 
 		const readyHandler = async () => {
