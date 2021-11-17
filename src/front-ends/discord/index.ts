@@ -17,12 +17,13 @@ import { botStatusToStringMap } from "../common/string-maps.js";
 import * as tconsole from "../../util/time-log.js";
 import { Database } from "../../db.js";
 import { SoundDetector, Status as SDStatus } from "../../sound-detector/index.js";
-import { renderAIReadings } from "../../sound-detector/ai-readings-renderer.js";
 import * as AI from "../../sound-detector/ai.js";
 import { Changes, SPBChangeDetector, PollerChangeType } from "../../starrpark.biz/change-detector.js";
 import { getCPUTemp } from "../../util/cpu-temp.js";
 import { CLARAS_BIRTH_TIMESTAMP } from "../../constants.js";
 import { formatBigInterval } from "../../util/format-time-interval.js";
+
+let renderAIReadingsFunctionPromise: Promise<typeof import("../../sound-detector/ai-readings-renderer.js").renderAIReadings>;
 
 export class DiscordFrontEnd implements FrontEnd {
 	#db: Database;
@@ -49,6 +50,10 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#client = client;
 		this.#sd = soundDetector;
 		this.#spbDetector = spbDetector;
+
+		if (this.#sd !== undefined && renderAIReadingsFunctionPromise === undefined) {
+			renderAIReadingsFunctionPromise = import("../../sound-detector/ai-readings-renderer.js").then(exports => exports.renderAIReadings);
+		}
 
 		if (this.#sd === undefined && this.#spbDetector !== undefined) {
 			this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
@@ -180,7 +185,7 @@ export class DiscordFrontEnd implements FrontEnd {
 
 **Minimum “this time is normal” probability:** ${pct(this.#sd.minNearTINScoreAverage)}`,
 										files: [
-											new Discord.MessageAttachment(renderAIReadings(this.#sd.readingHistory), "sd-history.png")
+											new Discord.MessageAttachment(await renderAIReadingsFunctionPromise.then(renderAIReadings => renderAIReadings(this.#sd!.readingHistory)), "sd-history.png")
 										]
 									}
 								);
