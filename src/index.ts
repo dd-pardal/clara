@@ -11,7 +11,6 @@ import { Bot, Status } from "./bot.js";
 import { createExtendableEvent } from "./util/extendable-event.js";
 import * as tconsole from "./util/time-log.js";
 import { Database } from "./db.js";
-import { SoundDetector } from "./sound-detector/index.js";
 import { DiscordFrontEnd } from "./front-ends/discord/index.js";
 import { TwitterFrontEnd } from "./front-ends/twitter/index.js";
 import { SPBChangeDetector } from "./starrpark.biz/change-detector.js";
@@ -28,7 +27,6 @@ const DEBUG = argv.includes("-dbg");
 // 100: /manage shutdown
 // 101: /manage restart
 function die(exitCode: number = 0) {
-	soundDetector?.destroy();
 	spbDetector?.destroy();
 	for (const frontEnd of frontEnds) {
 		frontEnd.destroy();
@@ -73,7 +71,6 @@ const bot = new MainBot();
 
 const db = new Database("./db.sqlite");
 
-const soundDetector = undefined as SoundDetector | undefined;
 const spbDetector = new SPBChangeDetector({
 	requestOptions: db.configs.spb.requestOptions,
 	pollingInterval: db.configs.spb.pollingInterval,
@@ -93,7 +90,6 @@ if (db.configs.discord?.enabled) {
 		db,
 		bot,
 		client: discordClient,
-		soundDetector,
 		spbDetector
 	}));
 }
@@ -103,12 +99,10 @@ if (db.configs.twitter?.enabled) {
 		db,
 		bot,
 		client: twitterClient,
-		soundDetector,
 		spbDetector
 	}));
 }
 
-soundDetector?.start();
 spbDetector?.start();
 
 function shutdown() {

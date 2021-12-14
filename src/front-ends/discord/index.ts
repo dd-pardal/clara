@@ -16,46 +16,34 @@ import { Bot } from "../../bot.js";
 import { botStatusToStringMap } from "../common/string-maps.js";
 import * as tconsole from "../../util/time-log.js";
 import { Database } from "../../db.js";
-import { SoundDetector, Status as SDStatus } from "../../sound-detector/index.js";
-import * as AI from "../../sound-detector/ai.js";
 import { Changes, SPBChangeDetector, PollerChangeType } from "../../starrpark.biz/change-detector.js";
 import { getCPUTemp } from "../../util/cpu-temp.js";
 import { CLARAS_BIRTH_TIMESTAMP } from "../../constants.js";
 import { formatBigInterval } from "../../util/format-time-interval.js";
 
-let renderAIReadingsFunctionPromise: Promise<typeof import("../../sound-detector/ai-readings-renderer.js").renderAIReadings>;
-
 export class DiscordFrontEnd implements FrontEnd {
 	#db: Database;
 	#bot: Bot;
 	#client: Discord.Client;
-	#sd: SoundDetector | undefined;
 	#spbDetector: SPBChangeDetector | undefined;
 
 	constructor({
 		db,
 		bot,
 		client,
-		soundDetector,
 		spbDetector,
 	}: {
 		db: Database;
 		bot: Bot;
 		client: Discord.Client;
-		soundDetector?: SoundDetector | undefined;
 		spbDetector?: SPBChangeDetector | undefined;
 	}) {
 		this.#db = db;
 		this.#bot = bot;
 		this.#client = client;
-		this.#sd = soundDetector;
 		this.#spbDetector = spbDetector;
 
-		if (this.#sd !== undefined && renderAIReadingsFunctionPromise === undefined) {
-			renderAIReadingsFunctionPromise = import("../../sound-detector/ai-readings-renderer.js").then(exports => exports.renderAIReadings);
-		}
-
-		if (this.#sd === undefined && this.#spbDetector !== undefined) {
+		if (this.#spbDetector !== undefined) {
 			this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
 		}
 
@@ -96,29 +84,6 @@ export class DiscordFrontEnd implements FrontEnd {
 			db.deleteGuildInfo(guild.id);
 		});
 
-		this.#sd?.on("detection", ({ detection, date }: { detection: AI.Class; date: Date; }) => {
-			if (detection !== AI.Class.THIS_IS_NORMAL) {
-				const timestampInSeconds = Math.floor(date.getTime() / 1000);
-
-				this.#broadcast({
-					content: `I’ve detected ${detection === AI.Class.SILENCE ? "silence" : "something"} in the WKBRL livestream at <t:${timestampInSeconds}:t>!`,
-					components: [
-						{
-							type: "ACTION_ROW",
-							components: [
-								{
-									type: "BUTTON",
-									label: "Check it out!",
-									style: "LINK",
-									url: `https://wkbrl.netlify.app/redir?t=${timestampInSeconds - 5}`
-								}
-							]
-						}
-					]
-				}
-				);
-			}
-		});
 		this.#spbDetector?.on("change", async (
 			{ firstDetectionPath, firstDetectionChangeType, changesPromise }:
 			{ firstDetectionPath: string; firstDetectionChangeType: PollerChangeType; changesPromise: Promise<Changes>; }
@@ -135,9 +100,6 @@ export class DiscordFrontEnd implements FrontEnd {
 		});
 		this.#bot.on("shutdown", (ev) => {
 			ev.waitUntil(this.#updateStatus());
-		});
-		this.#sd?.on("statusChange", () => {
-			this.#updateStatus();
 		});
 
 
@@ -170,34 +132,6 @@ export class DiscordFrontEnd implements FrontEnd {
 				};
 
 				switch (interaction.commandName) {
-					case "ai_stats": {
-						const pct = (x: number) => (x * 100).toFixed(1) + "%";
-
-						if (this.#sd !== undefined) {
-							if (this.#sd.isInitialized()) {
-								interaction.reply(
-									{
-										content:`\
-**Average of probabilities (last 3 seconds / last 5 minutes):**
-• “this time is normal”: ${pct(this.#sd.nearScoreAverages[AI.Class.THIS_IS_NORMAL])}/${pct(this.#sd.farScoreAverages[AI.Class.THIS_IS_NORMAL])}
-• sound: ${pct(this.#sd.nearScoreAverages[AI.Class.SOUND])}/${pct(this.#sd.farScoreAverages[AI.Class.SOUND])}
-• silence: ${pct(this.#sd.nearScoreAverages[AI.Class.SILENCE])}/${pct(this.#sd.farScoreAverages[AI.Class.SILENCE])}
-
-**Minimum “this time is normal” probability:** ${pct(this.#sd.minNearTINScoreAverage)}`,
-										files: [
-											new Discord.MessageAttachment(await renderAIReadingsFunctionPromise.then(renderAIReadings => renderAIReadings(this.#sd!.readingHistory)), "sd-history.png")
-										]
-									}
-								);
-							} else {
-								interaction.reply("I’m still starting up. 😅 Try again a few seconds later.");
-							}
-						} else {
-							interaction.reply("The sound detector is disabled.");
-						}
-						break;
-					}
-
 					case "bot_stats": {
 						let cpuTemp;
 						try {
@@ -235,7 +169,7 @@ Commands:
 • \`/help\`: Show this message
 • \`/credits_and_links\`: Show the people who made this bot and links you might be interested in
 • \`/invite\`: Send the link for inviting me
-• \`/set_channel\` (requires the Manage Server permission): Set the channel for which to send sound detections
+• \`/set_channel\` (requires the Manage Server permission): Set the channel for which to send detections
 • \`/set_mentions\` (requires the Manage Server permission): Change who I should mention when something is detected`);
 						break;
 					}
@@ -359,63 +293,6 @@ Credits:
 								this.#bot.restart();
 								break;
 							}
-
-							case "sd_params": {
-								const errors = [];
-
-								{
-									const x = interaction.options.getInteger("announcement_timeout");
-									if (x !== null) {
-										if (x < 0)
-											errors.push("announcement_timeout must be a valid non-negative integer.");
-										else
-											this.#db.configs.sdParams.broadcastTimeout = x * 1000;
-									}
-								}
-								{
-									const x = interaction.options.getInteger("num_samples");
-									if (x !== null) {
-										if (x <= 0)
-											errors.push("num_samples must be a valid positive integer.");
-										else
-											this.#db.configs.sdParams.samples = x;
-									}
-								}
-								{
-									const x = interaction.options.getNumber("sound_threshold");
-									if (x !== null) {
-										if (isNaN(x) || x < 0 || x > 1)
-											errors.push("sound_threshold must be a valid decimal number between 0 and 1.");
-										else
-											this.#db.configs.sdParams.soundThreshold = x;
-									}
-								}
-								{
-									const x = interaction.options.getNumber("silence_threshold");
-									if (x !== null) {
-										if (isNaN(x) || x < 0 || x > 1)
-											errors.push("silence_threshold must be a valid decimal number between 0 and 1.");
-										else
-											this.#db.configs.sdParams.silenceThreshold = x;
-									}
-								}
-								{
-									const x = interaction.options.getNumber("far_score_avg_threshold");
-									if (x !== null) {
-										if (isNaN(x) || x < 0 || x > 1)
-											errors.push("far_score_avg_threshold must be a valid decimal number between 0 and 1.");
-										else
-											this.#db.configs.sdParams.farScoreAvgThreshold = x;
-									}
-								}
-								interaction.reply((errors.length > 0 ? (errors.join("\n") + "\n\n") : "") + `\
-**Announcement timeout:** ${this.#db.configs.sdParams.broadcastTimeout / 1000}s
-**# of samples for averaging:** ${this.#db.configs.sdParams.samples}
-**Sound threshold:** ${this.#db.configs.sdParams.soundThreshold}
-**Silence threshold:** ${this.#db.configs.sdParams.silenceThreshold}
-**Far score average threshold:** ${this.#db.configs.sdParams.farScoreAvgThreshold}`);
-								break;
-							}
 						}
 						break;
 
@@ -466,15 +343,6 @@ Credits:
 	}
 
 	async #updateStatus(): Promise<void> {
-		if (this.#sd !== undefined) {
-			if (this.#sd.status === SDStatus.OK) {
-				this.#client.user!.setActivity({ type: "LISTENING", name: "the WKBRL livestream" });
-				// client.user!.setActivity({ type: "STREAMING", url: "https://www.youtube.com/watch?v=31NX4zpsKuI", name: "WKBRL" });
-			} else {
-				this.#client.user!.setActivity();
-			}
-		}
-
 		const statusMessage = this.#getStatusMessage();
 
 		const promises = [];
