@@ -38,12 +38,13 @@ export class Poller extends EventEmitter {
 		const { path, hash: expectedHash, eTag: expectedETag } = record;
 		return new Promise((res, rej) => {
 			const req = http.request({
+				...this.#requestOptions,
 				agent,
 				path: path,
-				headers: expectedETag !== null ? {
-					"if-none-match": expectedETag
-				} : {},
-				...this.#requestOptions
+				headers: {
+					...this.#requestOptions.headers,
+					...(expectedETag !== null ? { "if-none-match": expectedETag } : {})
+				}
 			});
 			req.on("response", (resp) => {
 				if (resp.statusCode === 200) {

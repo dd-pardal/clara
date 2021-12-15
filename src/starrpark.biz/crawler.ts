@@ -53,12 +53,13 @@ export async function crawl(requestOptions: http.RequestOptions, pathInfoMap: Pa
 			const pathInfo = pathInfoMap.get(path);
 
 			const req = http.request({
+				...requestOptions,
 				agent,
 				path: path,
-				headers: pathInfo?.eTag != null ? {
-					"if-none-match": pathInfo.eTag
-				} : {},
-				...requestOptions
+				headers: {
+					...requestOptions.headers,
+					...(pathInfo?.eTag != null ? { "if-none-match": pathInfo.eTag } : {})
+				}
 			});
 			req.on("response", (resp) => {
 				if (resp.statusCode === 200) {
