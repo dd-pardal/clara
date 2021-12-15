@@ -7,6 +7,7 @@ import EventEmitter from "events";
 import * as Discord from "discord.js";
 import { TwitterApi } from "twitter-api-v2";
 
+import { loadConfigsFromFileSync } from "./configs.js";
 import { Bot, Status } from "./bot.js";
 import { createExtendableEvent } from "./util/extendable-event.js";
 import * as tconsole from "./util/time-log.js";
@@ -16,10 +17,12 @@ import { TwitterFrontEnd } from "./front-ends/twitter/index.js";
 import { SPBChangeDetector } from "./starrpark.biz/change-detector.js";
 import { FrontEnd } from "./front-ends/front-end.js";
 
-
-const argv = process.argv.slice(2);
-const DEBUG = argv.includes("-dbg");
-
+const configsPath = process.argv[2] as string | undefined;
+if (!configsPath) {
+	console.error("ERROR: You must specify the configuration file’s path in the first argument.");
+	process.exit(1);
+}
+const configs = loadConfigsFromFileSync(configsPath);
 
 // Exit codes:
 // 0: Ctrl+C
@@ -31,7 +34,6 @@ function die(exitCode: number = 0) {
 	for (const frontEnd of frontEnds) {
 		frontEnd.destroy();
 	}
-	db.updateConfigs();
 	db.close();
 	process.exitCode = exitCode;
 
@@ -68,23 +70,22 @@ class MainBot extends EventEmitter implements Bot {
 }
 const bot = new MainBot();
 
-
-const db = new Database("./db.sqlite");
+const db = new Database(configs.databasePath);
 
 const spbDetector = new SPBChangeDetector({
-	requestOptions: db.configs.spb.requestOptions,
-	pollingInterval: db.configs.spb.pollingInterval,
+	requestOptions: configs.spb.requestOptions,
+	pollingInterval: configs.spb.pollingInterval,
 	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
 	setPathInfo: db.setSPBPathInfo.bind(db)
 }) as SPBChangeDetector | undefined;
 
 const frontEnds: FrontEnd[] = [];
 
-if (db.configs.discord?.enabled) {
+if (configs.discord?.enabled) {
 	const discordClient = new Discord.Client({
 		intents: ["GUILDS"]
 	});
-	await discordClient.login(db.configs.discord.auth.token);
+	await discordClient.login(configs.discord.auth.token);
 	tconsole.log("Connected to Discord.");
 	frontEnds.push(new DiscordFrontEnd({
 		db,
@@ -93,8 +94,8 @@ if (db.configs.discord?.enabled) {
 		spbDetector
 	}));
 }
-if (db.configs.twitter?.enabled) {
-	const twitterClient = new TwitterApi(db.configs.twitter.auth).readWrite;
+if (configs.twitter?.enabled) {
+	const twitterClient = new TwitterApi(configs.twitter.auth).readWrite;
 	frontEnds.push(new TwitterFrontEnd({
 		db,
 		bot,
@@ -116,7 +117,6 @@ process.once("SIGTERM", shutdown);
 function onError(err: unknown) {
 	try {
 		console.error("%o", err);
-		db.updateConfigs();
 		db.close();
 	} catch(err) {/* ignore error */}
 	process.exit(1);

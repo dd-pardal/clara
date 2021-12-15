@@ -1,0 +1,35 @@
+// This is the example configuration file for C.L.A.R.A.. Copy this file to `configs.jsonc`, make
+// the needed changes to the new file, save it, and run `node ./build/index.js ./configs.jsonc`
+// after compiling the code to run C.L.A.R.A..
+
+{
+	// The path to the SQLite database file
+	"databasePath": "./db.sqlite",
+
+	"discord": {
+		"enabled": false, // Set to `true` to enable Discord bot functionality
+		"auth": {
+			"token": "<token>"
+		}
+	},
+
+	"twitter": {
+		"enabled": false, // Set to `true` to enable Twitter functionality
+		"auth": {
+			"appKey": "<app key>",
+			"appSecret": "<app secret>",
+			"accessToken": "<access token>",
+			"accessSecret": "<access token secret>"
+		}
+	},
+
+	"spb": {
+		// Check <https://nodejs.org/dist/latest-v16.x/docs/api/http.html#httprequestoptions-callback> to see all of the available options.
+		"requestOptions": {
+			"host": "1bvfq4fbru.s3-website-us-west-2.amazonaws.com",
+			"port": 80
+		},
+		// The interval between each request, in milliseconds
+		"pollingInterval": 300
+	}
+}

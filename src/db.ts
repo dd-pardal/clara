@@ -23,7 +23,6 @@ export interface GuildInfo {
 export class Database {
 	#sqliteDB: SQLite.Database;
 	#preparedStatements: { [key: string]: SQLite.Statement; };
-	configs: any;
 
 	constructor(path: string) {
 		this.#sqliteDB = new SQLite(path);
@@ -39,14 +38,9 @@ export class Database {
 			createGuildInfo: this.#sqliteDB.prepare("INSERT INTO guilds (guildID) VALUES (?)"),
 			deleteGuildInfo: this.#sqliteDB.prepare("DELETE FROM guilds WHERE guildID=?"),
 
-			getConfigs: this.#sqliteDB.prepare("SELECT data FROM configs"),
-			updateConfigs: this.#sqliteDB.prepare("UPDATE configs SET data=?"),
-
 			getSPBPathInfos: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
 			setSPBPathInfo: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
 		};
-
-		this.configs = JSON.parse(this.#preparedStatements.getConfigs.get().data);
 	}
 
 
@@ -84,11 +78,6 @@ export class Database {
 	}
 	deleteGuildInfo(guildID: Discord.Snowflake): void {
 		this.#preparedStatements.deleteGuildInfo.run(guildID);
-	}
-
-
-	updateConfigs(): void {
-		this.#preparedStatements.updateConfigs.run(JSON.stringify(this.configs));
 	}
 
 

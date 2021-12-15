@@ -1,22 +1,28 @@
 /**
- * @fileoverview Allows to reconfigure the bot and to execute DB commands.
+ * @fileoverview Allows executing DB commands.
  */
 
 import { start as startREPL } from "repl";
 
+import { loadConfigsFromFileSync } from "../configs.js";
 import { Database } from "../db.js";
 
-const db = new Database("./db.sqlite");
+const configsPath = process.argv[2] as string | undefined;
+if (!configsPath) {
+	console.error("ERROR: You must specify the configuration file’s path in the first argument.");
+	process.exit(1);
+}
+const configs = loadConfigsFromFileSync(configsPath);
 
-console.log("`db`: database object\n`c`: config object");
+const db = new Database(configs.databasePath);
+
+console.log("`db`: database object");
 
 const repl = startREPL();
 Object.assign(repl.context, {
-	db,
-	c: db.configs
+	db
 });
 
 repl.on("exit", () => {
-	db.updateConfigs();
 	db.close();
 });
