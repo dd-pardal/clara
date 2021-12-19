@@ -11,7 +11,11 @@ const configs = loadConfigsFromFileSync(configsPath);
 
 const db = new Database(configs.databasePath);
 
-await crawl(configs.spb.requestOptions, new Map(db.getSPBPathInfos().map(i => [i.path, i])), db.setSPBPathInfo.bind(db));
+await crawl({
+	requestOptions: configs.spb.requestOptions,
+	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
+	setPathInfo: db.setSPBPathInfo.bind(db)
+});
 console.log("Crawl done!");
 
 db.close();

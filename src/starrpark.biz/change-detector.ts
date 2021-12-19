@@ -42,7 +42,11 @@ export class SPBChangeDetector extends EventEmitter {
 			tconsole.log(`Change detected at ${firstDetectionPath}.`);
 			this.#poller.stop();
 			await timeout(5000);
-			const changesPromise = crawl(this.#requestOptions, this.#pathInfoMap, this.#setPathInfo);
+			const changesPromise = crawl({
+				requestOptions: this.#requestOptions,
+				pathInfoMap: this.#pathInfoMap,
+				setPathInfo: this.#setPathInfo
+			});
 			this.emit("change", {
 				firstDetectionPath,
 				firstDetectionChangeType,

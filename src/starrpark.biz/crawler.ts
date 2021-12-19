@@ -26,7 +26,17 @@ export interface Changes {
  * @param paths The paths to begin crawling from. Defaults to all paths in `pathInfoMap`.
  * @returns A promise that resolves to the changes found.
  */
-export async function crawl(requestOptions: http.RequestOptions, pathInfoMap: PathInfoMap, setPathInfo: (pathInfo: PathInfo) => void, paths?: Iterable<string>): Promise<Changes> {
+export async function crawl({
+	requestOptions,
+	pathInfoMap,
+	setPathInfo,
+	paths
+}: {
+	requestOptions: http.RequestOptions;
+	pathInfoMap: PathInfoMap;
+	setPathInfo: (pathInfo: PathInfo) => void;
+	paths?: Iterable<string>;
+}): Promise<Changes> {
 	const ARCHIVE_ROOT = `./spb-archive/` + formatDateTimeAsISO8601Basic(new Date());
 
 	const crawledPaths: Set<string> = new Set();
