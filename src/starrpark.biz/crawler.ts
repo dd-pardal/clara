@@ -9,7 +9,6 @@ import { createHash } from "crypto";
 
 import { PathInfo, PathInfoMap } from "./types.js";
 import agent from "./agent.js";
-import { formatDateTimeAsISO8601Basic } from "../util/format-time.js";
 
 const pathRegex = /(?<=(?<delim>"|'|`)(?:(?:http:)?\/\/1bvfq4fbru\.s3-website-us-west-2\.amazonaws\.com)?)\/[A-z0-9-_.!#$%&][A-z0-9-_./!#$%&]+(?=\k<delim>)/g;
 
@@ -28,17 +27,21 @@ export interface Changes {
  */
 export async function crawl({
 	requestOptions,
+	archiveOptions,
 	pathInfoMap,
 	setPathInfo,
 	paths
 }: {
 	requestOptions: http.RequestOptions;
+	archiveOptions?: {
+		basePath: string;
+		directoryName: string;
+		prevDirectoryName?: string | null | undefined;
+	} | undefined;
 	pathInfoMap: PathInfoMap;
 	setPathInfo: (pathInfo: PathInfo) => void;
 	paths?: Iterable<string>;
 }): Promise<Changes> {
-	const ARCHIVE_ROOT = `./spb-archive/` + formatDateTimeAsISO8601Basic(new Date());
-
 	const crawledPaths: Set<string> = new Set();
 	const changes: Changes = {
 		added: [],
@@ -73,8 +76,11 @@ export async function crawl({
 			});
 			req.on("response", (resp) => {
 				if (resp.statusCode === 200) {
-					const fsPath = ARCHIVE_ROOT + path;
-					const mkdirPromise = fsp.mkdir(dirname(fsPath), { recursive: true });
+					let fsPath: string, mkdirPromise: Promise<string | undefined>;
+					if (archiveOptions !== undefined) {
+						fsPath = archiveOptions.basePath + archiveOptions.directoryName + path;
+						mkdirPromise = fsp.mkdir(dirname(fsPath), { recursive: true });
+					}
 
 					const hasher = createHash("sha256");
 
@@ -86,11 +92,21 @@ export async function crawl({
 					resp.on("end", () => {
 						const respBody = Buffer.concat(chunks);
 
-						mkdirPromise.then(() => fsp.writeFile(fsPath, respBody));
-
 						const hash = hasher.digest();
 						const { hash: prevHash, eTag: prevETag } = pathInfoMap.get(path) ?? {};
 						if (prevHash == null || !hash.equals(prevHash) || resp.headers.etag !== prevETag) {
+							if (archiveOptions !== undefined) {
+								if (prevHash == null || !hash.equals(prevHash)) {
+									// File added or modified
+									mkdirPromise.then(() => fsp.writeFile(fsPath, respBody));
+								} else {
+									// File not modified
+									if (archiveOptions.prevDirectoryName != null) {
+										mkdirPromise.then(() => fsp.link(archiveOptions.basePath + archiveOptions.prevDirectoryName + path, fsPath));
+									}
+								}
+							}
+
 							if (prevHash == null) {
 								changes.added.push(path);
 							} else if (!hash.equals(prevHash)) {
@@ -118,6 +134,11 @@ export async function crawl({
 						res();
 					});
 				} else if (resp.statusCode === 304) { // Not modified
+					if (archiveOptions?.prevDirectoryName != null) {
+						const fsPath = archiveOptions.basePath + archiveOptions.directoryName + path;
+						fsp.mkdir(dirname(fsPath), { recursive: true })
+							.then(() => fsp.link(archiveOptions.basePath + archiveOptions.prevDirectoryName + path, fsPath));
+					}
 					// It's okay to skip because we know all of the URIs in this file are already in `pathInfos`.
 					res();
 				} else if (resp.statusCode === 403 || resp.statusCode === 404) {
