@@ -40,6 +40,9 @@ export class Database {
 
 			getSPBPathInfos: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
 			setSPBPathInfo: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
+
+			getValue: this.#sqliteDB.prepare("SELECT value FROM map WHERE key=?"),
+			setValue: this.#sqliteDB.prepare("UPDATE map SET value=? WHERE key=?"),
 		};
 	}
 
@@ -88,6 +91,15 @@ export class Database {
 		this.#preparedStatements.setSPBPathInfo.run(path, hash, eTag);
 	}
 
+	getValue(key: string): null | bigint | number | string | Buffer {
+		return this.#preparedStatements.getValue.get(key).value;
+	}
+	setValue(key: string, value: null | bigint | number | string | Buffer): void {
+		const result = this.#preparedStatements.setValue.run(value, key);
+		if (result.changes !== 1) {
+			throw new Error("The specified key doesn't exist.");
+		}
+	}
 
 	close(): void {
 		this.#sqliteDB.close();
