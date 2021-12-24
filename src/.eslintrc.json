@@ -25,6 +25,8 @@
 		"eol-last": ["error", "always"],
 		"unicode-bom": "error",
 
+		"no-inner-declarations": "off",
+
 		"@typescript-eslint/no-unused-vars": "off", // The TypeScript compiler handles that.
 		"@typescript-eslint/ban-ts-comment": "off",
 		"@typescript-eslint/no-inferrable-types": "off",
