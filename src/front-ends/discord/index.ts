@@ -43,8 +43,16 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#client = client;
 		this.#spbDetector = spbDetector;
 
+		// Discord status
 		if (this.#spbDetector !== undefined) {
-			this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
+			const setStatus = () => {
+				this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
+			};
+			setStatus();
+			for (const shard of this.#client.ws.shards.values()) {
+				shard.on("ready", setStatus);
+				shard.on("resumed", setStatus);
+			}
 		}
 
 		const readyHandler = async () => {
