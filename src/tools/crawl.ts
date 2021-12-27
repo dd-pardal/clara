@@ -20,8 +20,8 @@ await crawl({
 		directoryName,
 		prevDirectoryName: db.getValue("spb.archiveDirectoryName") as string | null
 	} : undefined,
-	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
-	setPathInfo: db.setSPBPathInfo.bind(db)
+	pathInfoMap: new Map(db.getSPBPathRecords().map(i => [i.path, i])),
+	setPathInfo: db.setSPBPathRecord.bind(db)
 });
 db.setValue("spb.archiveDirectoryName", directoryName);
 console.log("Crawl done!");
