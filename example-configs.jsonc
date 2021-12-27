@@ -29,7 +29,15 @@
 			"host": "1bvfq4fbru.s3-website-us-west-2.amazonaws.com",
 			"port": 80
 		},
+
 		// The interval between each request, in milliseconds
-		"pollingInterval": 300
+		"pollingInterval": 300,
+
+		"archive": {
+			"enabled": true,
+
+			// Path to the directory where snapshots of StarrPark.biz will be archived
+			"basePath": "./spb-archive/" // Always include a trailing slash.
+		}
 	}
 }

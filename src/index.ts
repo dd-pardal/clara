@@ -73,10 +73,12 @@ const bot = new MainBot();
 const db = new Database(configs.databasePath);
 
 const spbDetector = new SPBChangeDetector({
+	db,
 	requestOptions: configs.spb.requestOptions,
+	archiveOptions: configs.spb.archive,
 	pollingInterval: configs.spb.pollingInterval,
-	pathInfoMap: new Map(db.getSPBPathInfos().map(i => [i.path, i])),
-	setPathInfo: db.setSPBPathInfo.bind(db)
+	pathInfoMap: new Map(db.getSPBPathRecords().map(i => [i.path, i])),
+	setPathInfo: db.setSPBPathRecord.bind(db)
 }) as SPBChangeDetector | undefined;
 
 const frontEnds: FrontEnd[] = [];

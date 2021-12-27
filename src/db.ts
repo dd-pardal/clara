@@ -14,7 +14,7 @@ function bigIntToSnowflake(int: BigInt | null) {
 		return int.toString();
 }
 
-export interface GuildInfo {
+export interface GuildRecord {
 	guildID: Discord.Snowflake;
 	broadcastChannelID: Discord.Snowflake | null;
 	statusMessageID: Discord.Snowflake | null;
@@ -30,16 +30,19 @@ export class Database {
 
 		this.#preparedStatements = {
 			getGuildIDs: this.#sqliteDB.prepare("SELECT guildID FROM guilds"),
-			getGuildInfo: this.#sqliteDB.prepare("SELECT broadcastChannelID, statusMessageID FROM guilds WHERE guildID=?"),
+			getGuildRecord: this.#sqliteDB.prepare("SELECT broadcastChannelID, statusMessageID FROM guilds WHERE guildID=?"),
 			getBroadcastInfo: this.#sqliteDB.prepare("SELECT guildID, broadcastChannelID, statusMessageID, announcementMentions FROM guilds WHERE broadcastChannelID IS NOT NULL"),
 			updateGuildBroadcastChannel: this.#sqliteDB.prepare("UPDATE guilds SET broadcastChannelID=? WHERE guildID=?"),
 			updateGuildAnnouncementMentions: this.#sqliteDB.prepare("UPDATE guilds SET announcementMentions=? WHERE guildID=?"),
 			updateGuildStatusMessage: this.#sqliteDB.prepare("UPDATE guilds SET statusMessageID=? WHERE guildID=?"),
-			createGuildInfo: this.#sqliteDB.prepare("INSERT INTO guilds (guildID) VALUES (?)"),
-			deleteGuildInfo: this.#sqliteDB.prepare("DELETE FROM guilds WHERE guildID=?"),
+			createGuildRecord: this.#sqliteDB.prepare("INSERT INTO guilds (guildID) VALUES (?)"),
+			deleteGuildRecord: this.#sqliteDB.prepare("DELETE FROM guilds WHERE guildID=?"),
 
-			getSPBPathInfos: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
-			setSPBPathInfo: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
+			getSPBPathRecords: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
+			setSPBPathRecord: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
+
+			getValue: this.#sqliteDB.prepare("SELECT value FROM map WHERE key=?"),
+			setValue: this.#sqliteDB.prepare("UPDATE map SET value=? WHERE key=?"),
 		};
 	}
 
@@ -47,18 +50,18 @@ export class Database {
 	getGuildIDs(): Discord.Snowflake[] {
 		return this.#preparedStatements.getGuildIDs.all().map(o => bigIntToSnowflake(o.guildID)) as Discord.Snowflake[];
 	}
-	getGuildInfo(guildID: Discord.Snowflake): GuildInfo {
-		const info = this.#preparedStatements.getGuildInfo.get(guildID);
-		info.broadcastChannelID = bigIntToSnowflake(info.broadcastChannelID);
-		info.statusMessageID = bigIntToSnowflake(info.statusMessageID);
-		return info;
+	getGuildRecord(guildID: Discord.Snowflake): GuildRecord {
+		const record = this.#preparedStatements.getGuildRecord.get(guildID);
+		record.broadcastChannelID = bigIntToSnowflake(record.broadcastChannelID);
+		record.statusMessageID = bigIntToSnowflake(record.statusMessageID);
+		return record;
 	}
 	getBroadcastInfo(): { guildID: Discord.Snowflake; broadcastChannelID: Discord.Snowflake; statusMessageID: Discord.Snowflake | null; announcementMentions: string; }[] {
 		const array = this.#preparedStatements.getBroadcastInfo.all();
-		for (const info of array) {
-			info.guildID = bigIntToSnowflake(info.guildID);
-			info.broadcastChannelID = bigIntToSnowflake(info.broadcastChannelID);
-			info.statusMessageID = bigIntToSnowflake(info.statusMessageID);
+		for (const record of array) {
+			record.guildID = bigIntToSnowflake(record.guildID);
+			record.broadcastChannelID = bigIntToSnowflake(record.broadcastChannelID);
+			record.statusMessageID = bigIntToSnowflake(record.statusMessageID);
 		}
 		return array;
 	}
@@ -73,21 +76,30 @@ export class Database {
 		this.#preparedStatements.updateGuildStatusMessage.run(statusMessageID, guildID);
 	}
 
-	createGuildInfo(guildID: Discord.Snowflake): void {
-		this.#preparedStatements.createGuildInfo.run(guildID);
+	createGuildRecord(guildID: Discord.Snowflake): void {
+		this.#preparedStatements.createGuildRecord.run(guildID);
 	}
-	deleteGuildInfo(guildID: Discord.Snowflake): void {
-		this.#preparedStatements.deleteGuildInfo.run(guildID);
-	}
-
-
-	getSPBPathInfos(): SPB.PathInfo[] {
-		return this.#preparedStatements.getSPBPathInfos.all() as SPB.PathInfo[];
-	}
-	setSPBPathInfo({ path, hash, eTag }: SPB.PathInfo): void {
-		this.#preparedStatements.setSPBPathInfo.run(path, hash, eTag);
+	deleteGuildRecord(guildID: Discord.Snowflake): void {
+		this.#preparedStatements.deleteGuildRecord.run(guildID);
 	}
 
+
+	getSPBPathRecords(): SPB.PathInfo[] {
+		return this.#preparedStatements.getSPBPathRecords.all() as SPB.PathInfo[];
+	}
+	setSPBPathRecord({ path, hash, eTag }: SPB.PathInfo): void {
+		this.#preparedStatements.setSPBPathRecord.run(path, hash, eTag);
+	}
+
+	getValue(key: string): null | bigint | number | string | Buffer {
+		return this.#preparedStatements.getValue.get(key).value;
+	}
+	setValue(key: string, value: null | bigint | number | string | Buffer): void {
+		const result = this.#preparedStatements.setValue.run(value, key);
+		if (result.changes !== 1) {
+			throw new Error("The specified key doesn't exist.");
+		}
+	}
 
 	close(): void {
 		this.#sqliteDB.close();

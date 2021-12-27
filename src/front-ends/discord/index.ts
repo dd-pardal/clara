@@ -43,8 +43,16 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#client = client;
 		this.#spbDetector = spbDetector;
 
+		// Discord status
 		if (this.#spbDetector !== undefined) {
-			this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
+			const setStatus = () => {
+				this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
+			};
+			setStatus();
+			for (const shard of this.#client.ws.shards.values()) {
+				shard.on("ready", setStatus);
+				shard.on("resumed", setStatus);
+			}
 		}
 
 		const readyHandler = async () => {
@@ -58,14 +66,14 @@ export class DiscordFrontEnd implements FrontEnd {
 				for (const guildID of guildIDsFromDiscord) {
 					if (!guildIDsFromDB.includes(guildID)) {
 						console.log(`The bot was added to the guild "${this.#client.guilds.cache.get(guildID)!.name}" (ID: ${guildID}).`);
-						db.createGuildInfo(guildID);
+						db.createGuildRecord(guildID);
 					}
 				}
 				// Removal
 				for (const guildID of guildIDsFromDB) {
 					if (!guildIDsFromDiscord.includes(guildID)) {
 						console.log(`The bot was removed from the guild with ID ${guildID}.`);
-						db.deleteGuildInfo(guildID);
+						db.deleteGuildRecord(guildID);
 					}
 				}
 			}
@@ -77,11 +85,11 @@ export class DiscordFrontEnd implements FrontEnd {
 		}
 		this.#client.on("guildCreate", (guild) => {
 			tconsole.log(`The bot was added to the guild "${guild.name}" (ID: ${guild.id}).`);
-			db.createGuildInfo(guild.id);
+			db.createGuildRecord(guild.id);
 		});
 		this.#client.on("guildDelete", (guild) => {
 			tconsole.log(`The bot was removed from the guild "${guild.name}" (ID: ${guild.id}).`);
-			db.deleteGuildInfo(guild.id);
+			db.deleteGuildRecord(guild.id);
 		});
 
 		this.#spbDetector?.on("change", async (
@@ -158,7 +166,7 @@ export class DiscordFrontEnd implements FrontEnd {
 					}
 
 					case "help": {
-						const broadcastChannel = interaction.guildId && db.getGuildInfo(interaction.guildId).broadcastChannelID;
+						const broadcastChannel = interaction.guildId && db.getGuildRecord(interaction.guildId).broadcastChannelID;
 
 						await interaction.reply(`\
 Hello there! My name is Clara and I watch for changes on [StarrPark.biz](http://starrpark.biz/) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannel ? `<#${broadcastChannel}>` : "the chosen text channel"}.
@@ -237,7 +245,7 @@ Credits:
 								) {
 									interaction.reply({ content: "I don’t have permission to send messages in that channel.", ephemeral: true });
 								} else {
-									const guildInfo = db.getGuildInfo(interaction.guildId);
+									const guildInfo = db.getGuildRecord(interaction.guildId);
 									if (guildInfo.broadcastChannelID && guildInfo.statusMessageID) {
 										this.#deleteStatusMessage(guildInfo.broadcastChannelID, guildInfo.statusMessageID).catch(() => {/* ignore error */});
 									}

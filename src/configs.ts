@@ -7,6 +7,7 @@ import stripJsonComments from "strip-json-comments";
 
 import { RequestOptions } from "http";
 import { TwitterApiTokens } from "twitter-api-v2";
+import { ArchiveOptions } from "./starrpark.biz/types.js";
 
 export type Configs = {
 	databasePath: string;
@@ -25,6 +26,7 @@ export type Configs = {
 	spb: {
 		requestOptions: RequestOptions;
 		pollingInterval: number;
+		archive: ArchiveOptions;
 	};
 };
 
