@@ -73,7 +73,7 @@ export async function fetchChannelData(channelID: string): Promise<ChannelData> 
 			name: data.metadata.channelMetadataRenderer.title,
 			description: data.metadata.channelMetadataRenderer.description,
 			profilePictureURL: getOriginalImageURL(data.metadata.channelMetadataRenderer.avatar.thumbnails[0].url),
-			bannerURL: "banner" in data.header.c4TabbedHeaderRenderer ? null : getOriginalImageURL(data.header.c4TabbedHeaderRenderer.banner.thumbnails[0].url),
+			bannerURL: "banner" in data.header.c4TabbedHeaderRenderer ? getOriginalImageURL(data.header.c4TabbedHeaderRenderer.banner.thumbnails[0].url) : null,
 			newestVideos
 		};
 	} catch(err) {
