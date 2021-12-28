@@ -17,5 +17,5 @@ export interface ChannelRecord {
 	description: string;
 	profilePictureURL: string;
 	bannerURL: string | null;
-	newestVideoID: string;
+	newestVideoID: string | null;
 }

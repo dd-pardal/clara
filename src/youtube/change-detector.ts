@@ -11,8 +11,8 @@ export interface Change {
 	descriptionChanged: boolean;
 	profilePictureChanged: boolean;
 	bannerChanged: boolean;
-	/** The number of new videos published since the last request */
-	newVideos: number;
+	/** The number of new videos published since the last request or `null` if it isn't possible to determine */
+	newVideos: number | null;
 }
 
 export class YoutubeChangeDetector extends EventEmitter {
@@ -63,14 +63,16 @@ export class YoutubeChangeDetector extends EventEmitter {
 				const descriptionChanged = newData.description !== record.description;
 				const profilePictureChanged = newData.profilePictureURL !== record.profilePictureURL;
 				const bannerChanged = newData.bannerURL !== record.bannerURL;
-				let newVideos: number;
-				for (newVideos = 0; newVideos < newData.newestVideos.length; newVideos++) {
-					if (newData.newestVideos[newVideos].videoID === record.newestVideoID) {
-						break;
+				const newVideos = record.newestVideoID === null ? newData.newestVideos.length : (() => {
+					for (let newVideos = 0; newVideos < newData.newestVideos.length; newVideos++) {
+						if (newData.newestVideos[newVideos].videoID === record.newestVideoID) {
+							return newVideos;
+						}
 					}
-				}
+					return null;
+				})();
 
-				if (nameChanged || descriptionChanged || profilePictureChanged || bannerChanged || newVideos > 0) {
+				if (nameChanged || descriptionChanged || profilePictureChanged || bannerChanged || newVideos !== 0) {
 					this.emit("change", {
 						record,
 						newData,
