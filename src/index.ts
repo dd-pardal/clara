@@ -15,6 +15,7 @@ import { Database } from "./db.js";
 import { DiscordFrontEnd } from "./front-ends/discord/index.js";
 import { TwitterFrontEnd } from "./front-ends/twitter/index.js";
 import { SPBChangeDetector } from "./starrpark.biz/change-detector.js";
+import { YoutubeChangeDetector } from "./youtube/change-detector.js";
 import { FrontEnd } from "./front-ends/front-end.js";
 
 const configsPath = process.argv[2] as string | undefined;
@@ -31,6 +32,7 @@ const configs = loadConfigsFromFileSync(configsPath);
 // 101: /manage restart
 function die(exitCode: number = 0) {
 	spbDetector?.destroy();
+	youtubeDetector?.stop();
 	for (const frontEnd of frontEnds) {
 		frontEnd.destroy();
 	}
@@ -80,6 +82,13 @@ const spbDetector = new SPBChangeDetector({
 	pathInfoMap: new Map(db.getSPBPathRecords().map(i => [i.path, i])),
 	setPathInfo: db.setSPBPathRecord.bind(db)
 }) as SPBChangeDetector | undefined;
+const youtubeDetector = new YoutubeChangeDetector({
+	records: db.getYTChannelRecords(),
+	updateYTChannelRecord: db.updateYTChannelRecord.bind(db),
+	pollingInterval: configs.youtube.pollingInterval
+}) as YoutubeChangeDetector | undefined;
+
+youtubeDetector?.on("change", console.log);
 
 const frontEnds: FrontEnd[] = [];
 
@@ -107,6 +116,7 @@ if (configs.twitter?.enabled) {
 }
 
 spbDetector?.start();
+youtubeDetector?.start();
 
 function shutdown() {
 	tconsole.log("Shutting down gracefully.");
