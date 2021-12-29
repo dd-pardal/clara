@@ -6,6 +6,7 @@ import SQLite from "better-sqlite3";
 
 import * as Discord from "discord.js";
 import * as SPB from "./starrpark.biz/types.js";
+import * as YT from "./youtube/types.js";
 
 function bigIntToSnowflake(int: BigInt | null) {
 	if (int === null)
@@ -40,6 +41,11 @@ export class Database {
 
 			getSPBPathRecords: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
 			setSPBPathRecord: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
+
+			getYTChannelRecords: this.#sqliteDB.prepare("SELECT channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID FROM youtubeChannels"),
+			updateYTChannelRecord: this.#sqliteDB.prepare("UPDATE youtubeChannels SET displayName=?, name=?, description=?, profilePictureURL=?, bannerURL=?, newestVideoID=? WHERE channelID=?"),
+			createYTChannelRecord: this.#sqliteDB.prepare("INSERT INTO youtubeChannels (channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID) VALUES (?, ?, ?, ?, ?, ?, ?)"),
+			deleteYTChannelRecord: this.#sqliteDB.prepare("DELETE FROM youtubeChannels WHERE channelID=?"),
 
 			getValue: this.#sqliteDB.prepare("SELECT value FROM map WHERE key=?"),
 			setValue: this.#sqliteDB.prepare("UPDATE map SET value=? WHERE key=?"),
@@ -89,6 +95,35 @@ export class Database {
 	}
 	setSPBPathRecord({ path, hash, eTag }: SPB.PathInfo): void {
 		this.#preparedStatements.setSPBPathRecord.run(path, hash, eTag);
+	}
+
+	getYTChannelRecords(): YT.ChannelRecord[] {
+		return this.#preparedStatements.getYTChannelRecords.all();
+	}
+	updateYTChannelRecord({
+		channelID,
+		displayName,
+		name,
+		description,
+		profilePictureURL,
+		bannerURL,
+		newestVideoID
+	}: YT.ChannelRecord): void {
+		this.#preparedStatements.updateYTChannelRecord.run(displayName, name, description, profilePictureURL, bannerURL, newestVideoID, channelID);
+	}
+	createYTChannelRecord({
+		channelID,
+		displayName,
+		name,
+		description,
+		profilePictureURL,
+		bannerURL,
+		newestVideoID
+	}: YT.ChannelRecord): void {
+		this.#preparedStatements.createYTChannelRecord.run(channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID);
+	}
+	deleteYTChannelRecord(channelID: string): void {
+		this.#preparedStatements.deleteYTChannelRecord.run(channelID);
 	}
 
 	getValue(key: string): null | bigint | number | string | Buffer {

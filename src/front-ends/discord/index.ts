@@ -16,32 +16,41 @@ import { Bot } from "../../bot.js";
 import { botStatusToStringMap } from "../common/string-maps.js";
 import * as tconsole from "../../util/time-log.js";
 import { Database } from "../../db.js";
-import { Changes, SPBChangeDetector, PollerChangeType } from "../../starrpark.biz/change-detector.js";
+import * as SPB from "../../starrpark.biz/change-detector.js";
+import * as YT from "../../youtube/change-detector.js";
 import { getCPUTemp } from "../../util/cpu-temp.js";
 import { CLARAS_BIRTH_TIMESTAMP } from "../../constants.js";
 import { formatBigInterval } from "../../util/format-time-interval.js";
+
+const conjunctionFormatter = new Intl.ListFormat("en", { type: "conjunction" });
 
 export class DiscordFrontEnd implements FrontEnd {
 	#db: Database;
 	#bot: Bot;
 	#client: Discord.Client;
-	#spbDetector: SPBChangeDetector | undefined;
+
+	#spbDetector: SPB.SPBChangeDetector | undefined;
+	#youtubeDetector: YT.YoutubeChangeDetector | undefined;
 
 	constructor({
 		db,
 		bot,
 		client,
 		spbDetector,
+		youtubeDetector
 	}: {
 		db: Database;
 		bot: Bot;
 		client: Discord.Client;
-		spbDetector?: SPBChangeDetector | undefined;
+		spbDetector?: SPB.SPBChangeDetector | undefined;
+		youtubeDetector?: YT.YoutubeChangeDetector | undefined;
 	}) {
 		this.#db = db;
 		this.#bot = bot;
 		this.#client = client;
+
 		this.#spbDetector = spbDetector;
+		this.#youtubeDetector = youtubeDetector;
 
 		// Discord status
 		if (this.#spbDetector !== undefined) {
@@ -94,11 +103,27 @@ export class DiscordFrontEnd implements FrontEnd {
 
 		this.#spbDetector?.on("change", async (
 			{ firstDetectionPath, firstDetectionChangeType, changesPromise }:
-			{ firstDetectionPath: string; firstDetectionChangeType: PollerChangeType; changesPromise: Promise<Changes>; }
+			{ firstDetectionPath: string; firstDetectionChangeType: SPB.PollerChangeType; changesPromise: Promise<SPB.Changes>; }
 		) => {
 			const changes = await changesPromise;
 			this.#broadcast({
 				content: `I’ve detected a change in the StarrPark.biz website! ${changes.added.length} URLs were added and ${changes.modified.length} were modified.`,
+			});
+		});
+
+		this.#youtubeDetector?.on("change", (change: YT.Change) => {
+			this.#broadcast({
+				content:
+					`\
+I’ve detected a change in ${change.record.displayName ?? change.record.name}!
+
+` +
+					(change.nameChanged ? `**The name has changed:** ~~${change.record.name}~~ *${change.newData.name}*\n` : "") +
+					(change.descriptionChanged ? "**The description has changed.**\n" : "") +
+					(change.profilePictureChanged ? `**The profile picture has changed.** (The old one was ${change.record.profilePictureURL}.)\n` : "") +
+					(change.bannerChanged ? `**The banner has changed.** (The old one was ${change.record.bannerURL}.)\n` : "") +
+					(change.newVideos === null ? "**The video list has changed.**\n" : "") +
+					(change.newVideos !== null && change.newVideos > 0 ? `**New videos:** ${change.newData.newestVideos.slice(0, change.newVideos).reverse().map(video => `https://youtu.be/${video.videoID}`).join(", ")}\n` : "")
 			});
 		});
 
@@ -276,7 +301,7 @@ Credits:
 										throw new TypeError(`It wasn't possible to find out the type of the mention with ID ${opt.value}.`);
 								});
 								db.updateGuildAnnouncementMentions(interaction.guildId, mentions.map(s => s + " ").join(""));
-								interaction.reply(`I will mention ${new Intl.ListFormat("en", { type: "conjunction" }).format(mentions)} when something is detected.`);
+								interaction.reply(`I will mention ${conjunctionFormatter.format(mentions)} when something is detected.`);
 							} else {
 								db.updateGuildAnnouncementMentions(interaction.guildId, "");
 								interaction.reply("I won’t mention anyone when something is detected.");

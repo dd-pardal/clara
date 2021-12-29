@@ -28,6 +28,9 @@ export type Configs = {
 		pollingInterval: number;
 		archive: ArchiveOptions;
 	};
+	youtube: {
+		pollingInterval: number;
+	};
 };
 
 export function loadConfigsFromFileSync(path: string): Configs {

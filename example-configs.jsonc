@@ -39,5 +39,8 @@
 			// Path to the directory where snapshots of StarrPark.biz will be archived
 			"basePath": "./spb-archive/" // Always include a trailing slash.
 		}
+	},
+	"youtube": {
+		"pollingInterval": 60000
 	}
 }
