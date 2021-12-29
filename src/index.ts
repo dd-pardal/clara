@@ -88,8 +88,6 @@ const youtubeDetector = new YoutubeChangeDetector({
 	pollingInterval: configs.youtube.pollingInterval
 }) as YoutubeChangeDetector | undefined;
 
-youtubeDetector?.on("change", console.log);
-
 const frontEnds: FrontEnd[] = [];
 
 if (configs.discord?.enabled) {
