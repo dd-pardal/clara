@@ -42,9 +42,9 @@ export class Database {
 			getSPBPathRecords: this.#sqliteDB.prepare("SELECT path, hash, eTag FROM spbFiles"),
 			setSPBPathRecord: this.#sqliteDB.prepare("INSERT OR REPLACE INTO spbFiles (path, hash, eTag) VALUES (?, ?, ?)"),
 
-			getYTChannelRecords: this.#sqliteDB.prepare("SELECT channelID, name, description, profilePictureURL, bannerURL, newestVideoID FROM youtubeChannels"),
-			updateYTChannelRecord: this.#sqliteDB.prepare("UPDATE youtubeChannels SET name=?, description=?, profilePictureURL=?, bannerURL=?, newestVideoID=? WHERE channelID=?"),
-			createYTChannelRecord: this.#sqliteDB.prepare("INSERT INTO youtubeChannels (channelID, name, description, profilePictureURL, bannerURL, newestVideoID) VALUES (?, ?, ?, ?, ?, ?)"),
+			getYTChannelRecords: this.#sqliteDB.prepare("SELECT channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID FROM youtubeChannels"),
+			updateYTChannelRecord: this.#sqliteDB.prepare("UPDATE youtubeChannels SET displayName=?, name=?, description=?, profilePictureURL=?, bannerURL=?, newestVideoID=? WHERE channelID=?"),
+			createYTChannelRecord: this.#sqliteDB.prepare("INSERT INTO youtubeChannels (channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID) VALUES (?, ?, ?, ?, ?, ?, ?)"),
 			deleteYTChannelRecord: this.#sqliteDB.prepare("DELETE FROM youtubeChannels WHERE channelID=?"),
 
 			getValue: this.#sqliteDB.prepare("SELECT value FROM map WHERE key=?"),
@@ -97,28 +97,30 @@ export class Database {
 		this.#preparedStatements.setSPBPathRecord.run(path, hash, eTag);
 	}
 
-	getYTChannelRecords(): YT.ChannelRecord[] {  // eslint-disable-line indent
+	getYTChannelRecords(): YT.ChannelRecord[] {
 		return this.#preparedStatements.getYTChannelRecords.all();
 	}
 	updateYTChannelRecord({
 		channelID,
+		displayName,
 		name,
 		description,
 		profilePictureURL,
 		bannerURL,
 		newestVideoID
 	}: YT.ChannelRecord): void {
-		this.#preparedStatements.updateYTChannelRecord.run(name, description, profilePictureURL, bannerURL, newestVideoID, channelID);
+		this.#preparedStatements.updateYTChannelRecord.run(displayName, name, description, profilePictureURL, bannerURL, newestVideoID, channelID);
 	}
 	createYTChannelRecord({
 		channelID,
+		displayName,
 		name,
 		description,
 		profilePictureURL,
 		bannerURL,
 		newestVideoID
 	}: YT.ChannelRecord): void {
-		this.#preparedStatements.createYTChannelRecord.run(channelID, name, description, profilePictureURL, bannerURL, newestVideoID);
+		this.#preparedStatements.createYTChannelRecord.run(channelID, displayName, name, description, profilePictureURL, bannerURL, newestVideoID);
 	}
 	deleteYTChannelRecord(channelID: string): void {
 		this.#preparedStatements.deleteYTChannelRecord.run(channelID);

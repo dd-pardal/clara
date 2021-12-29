@@ -8,7 +8,7 @@ const configsPath = process.argv[2] as string | undefined;
 const action = process.argv[3] as string | undefined;
 const channelID = process.argv[4] as string | undefined;
 if (!configsPath || (action !== "add" && action !== "remove") || !channelID) {
-	console.error("Syntax: node youtube-channels.js <configs file> (add | remove) <channel id>");
+	console.error("Syntax: node youtube-channels.js <configs file> (add <channel id> [display name] | remove <channel id>)");
 	process.exit(1);
 }
 const configs = loadConfigsFromFileSync(configsPath);
@@ -19,6 +19,8 @@ if (action === "remove") {
 	console.log("Deleting the channel record…");
 	db.deleteYTChannelRecord(channelID);
 } else {
+	const displayName = process.argv[5] ?? null;
+
 	console.log("Fetching the channel data…");
 	const { name, description, profilePictureURL, bannerURL, newestVideos } = await fetchChannelData(channelID);
 
@@ -26,6 +28,7 @@ if (action === "remove") {
 	try {
 		db.createYTChannelRecord({
 			channelID,
+			displayName,
 			name,
 			description,
 			profilePictureURL,
@@ -37,6 +40,7 @@ if (action === "remove") {
 			console.log("The record already existed. Updating it instead…");
 			db.updateYTChannelRecord({
 				channelID,
+				displayName,
 				name,
 				description,
 				profilePictureURL,

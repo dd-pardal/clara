@@ -13,6 +13,7 @@ export interface ChannelData {
 
 export interface ChannelRecord {
 	channelID: string;
+	displayName: string | null;
 	name: string;
 	description: string;
 	profilePictureURL: string;
