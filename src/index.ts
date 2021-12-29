@@ -100,7 +100,8 @@ if (configs.discord?.enabled) {
 		db,
 		bot,
 		client: discordClient,
-		spbDetector
+		spbDetector,
+		youtubeDetector
 	}));
 }
 if (configs.twitter?.enabled) {
@@ -109,7 +110,8 @@ if (configs.twitter?.enabled) {
 		db,
 		bot,
 		client: twitterClient,
-		spbDetector
+		spbDetector,
+		youtubeDetector
 	}));
 }
 
