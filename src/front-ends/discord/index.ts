@@ -53,11 +53,19 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#youtubeDetector = youtubeDetector;
 
 		// Discord status
-		if (this.#spbDetector !== undefined) {
+		{
+			const statuses: Discord.ActivityOptions[] = [
+				{ type: "WATCHING", name: "StarrPark.biz" },
+				{ type: "WATCHING", name: "the WKBRL channel" }
+			];
+			let i = 0;
+
 			const setStatus = () => {
-				this.#client.user?.setActivity({ type: "PLAYING", name: "WHERE IS THE LORE?" });
+				this.#client.user?.setActivity(statuses[i]);
+				i = (i + 1) % statuses.length;
 			};
 			setStatus();
+			setInterval(setStatus, 300_000);
 			for (const shard of this.#client.ws.shards.values()) {
 				shard.on("ready", setStatus);
 				shard.on("resumed", setStatus);
