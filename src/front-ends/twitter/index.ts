@@ -77,7 +77,7 @@ ${change.newVideos !== null && change.newVideos > 0 ? `\nNew videos: ${change.ne
 	async #updateStatus(): Promise<void> {
 		await this.#client.v1.post("account/update_profile.json", {
 			description: `\
-I’m a bot that detects changes on StarrPark.biz! | she/it | Not affiliated with Supercell.
+I’m a bot that detects things related to #BrawlStars lore! | @Starrchive | she/it | Not affiliated with Supercell.
 
 CURRENT STATUS: ${botStatusToStringMap.get(this.#bot.status)}`
 		}).catch(() => {/* ignore error */});
