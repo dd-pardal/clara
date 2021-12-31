@@ -33,6 +33,8 @@ export class DiscordFrontEnd implements FrontEnd {
 	#spbDetector: SPB.SPBChangeDetector | undefined;
 	#youtubeDetector: YT.YoutubeChangeDetector | undefined;
 
+	#statusTimeout: NodeJS.Timeout | undefined;
+
 	constructor({
 		db,
 		bot,
@@ -66,7 +68,7 @@ export class DiscordFrontEnd implements FrontEnd {
 				i = (i + 1) % statuses.length;
 			};
 			setStatus();
-			setInterval(setStatus, 300_000);
+			this.#statusTimeout = setInterval(setStatus, 300_000);
 			for (const shard of this.#client.ws.shards.values()) {
 				shard.on("ready", setStatus);
 				shard.on("resumed", setStatus);
@@ -450,6 +452,8 @@ Credits:
 	}
 
 	destroy(): void {
+		clearInterval(this.#statusTimeout);
+
 		this.#client.destroy();
 
 		this.#client.ws.shards.get(0)?.on("close", () => {
