@@ -10,6 +10,7 @@
 import * as os from "os";
 
 import * as Discord from "discord.js";
+import { MessageButtonStyles, MessageComponentTypes } from "discord.js/typings/enums.js";
 
 import { FrontEnd } from "../front-end.js";
 import { Bot } from "../../bot.js";
@@ -122,16 +123,26 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#youtubeDetector?.on("change", (change: YT.Change) => {
 			this.#broadcast({
 				content:
-					`\
-I’ve detected a change in ${change.record.displayName ?? change.record.name}!
-
-` +
-					(change.nameChanged ? `**The name has changed:** ~~${change.record.name}~~ *${change.newData.name}*\n` : "") +
-					(change.descriptionChanged ? "**The description has changed.**\n" : "") +
-					(change.profilePictureChanged ? `**The profile picture has changed.** (The old one was ${change.record.profilePictureURL}.)\n` : "") +
-					(change.bannerChanged ? `**The banner has changed.** (The old one was ${change.record.bannerURL}.)\n` : "") +
-					(change.newVideos === null ? "**The video list has changed.**\n" : "") +
-					(change.newVideos !== null && change.newVideos > 0 ? `**New videos:** ${change.newData.newestVideos.slice(0, change.newVideos).reverse().map(video => `https://youtu.be/${video.videoID}`).join(", ")}\n` : "")
+					`I’ve detected a change in ${change.record.displayName ?? change.record.name}:\n` +
+					(change.nameChanged ? `The name has changed: ~~${change.record.name}~~ **${change.newData.name}**\n` : "") +
+					(change.descriptionChanged ? "The description has changed.\n" : "") +
+					(change.profilePictureChanged ? `The profile picture has changed.\n` : "") +
+					(change.bannerChanged ? `The banner has changed.\n` : "") +
+					(change.newVideos === null ? "The video list has changed.\n" : "") +
+					(change.newVideos !== null && change.newVideos > 0 ? `New videos: ${change.newData.newestVideos.slice(0, change.newVideos).reverse().map(video => `https://youtu.be/${video.videoID}`).join(", ")}\n` : ""),
+				components: [
+					{
+						type: MessageComponentTypes.ACTION_ROW,
+						components: [
+							{
+								type: MessageComponentTypes.BUTTON,
+								label: "Check the channel out!",
+								style: MessageButtonStyles.LINK,
+								url: `https://www.youtube.com/channel/${change.newData.channelID}/${change.descriptionChanged ? "/about" : ""}`
+							}
+						]
+					}
+				]
 			});
 		});
 
