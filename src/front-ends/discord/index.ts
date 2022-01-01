@@ -161,60 +161,55 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#client.on("interactionCreate", async (interaction) => {
 			if (interaction.isCommand()) {
 
-				const checkGuild = (callback: (interaction: Discord.CommandInteraction & {
-					guildId: string;
-					member: Discord.GuildMember | import("discord-api-types/payloads/v9/_interactions/base").APIInteractionGuildMember;
-				}) => void) => {
+				const checkGuild = <R>(callback: (interaction: Discord.BaseGuildCommandInteraction<"present"> & Discord.CommandInteraction) => R) => {
 					if (interaction.inGuild()) {
-						callback(interaction);
+						return callback(interaction);
 					} else {
 						interaction.reply({ content: "You may only use this command inside a server.", ephemeral: true });
 					}
 				};
-				const checkPermission = (callback: (interaction: Discord.CommandInteraction & {
-					guildId: string;
-					member: Discord.GuildMember | import("discord-api-types/payloads/v9/_interactions/base").APIInteractionGuildMember;
-				}) => void) => {
-					checkGuild((interaction) => {
+				const checkPermission = <R>(callback: (interaction: Discord.BaseGuildCommandInteraction<"present"> & Discord.CommandInteraction) => R) => {
+					return checkGuild((interaction) => {
 						const permissions = interaction.member.permissions;
 						if (permissions instanceof Discord.Permissions && permissions.has(Discord.Permissions.FLAGS.MANAGE_GUILD)) {
-							callback(interaction);
+							return callback(interaction);
 						} else {
 							interaction.reply({ content: "You must have the Manage Server permission in order to use this command.", ephemeral: true });
 						}
 					});
 				};
 
-				switch (interaction.commandName) {
-					case "bot_stats": {
-						let cpuTemp;
-						try {
-							cpuTemp = (await getCPUTemp()).toFixed(0) + " °C";
-						} catch(err) {
-							cpuTemp = "[unavailable]";
+				try {
+					switch (interaction.commandName) {
+						case "bot_stats": {
+							let cpuTemp;
+							try {
+								cpuTemp = (await getCPUTemp()).toFixed(0) + " °C";
+							} catch(err) {
+								cpuTemp = "[unavailable]";
+							}
+
+							await interaction.reply({
+								embeds: [
+									{
+										title: "Bot stats",
+										fields: [
+											{ name: "Discord websocket latency (ping)", value: `${this.#client.ws.ping}ms` },
+											{ name: "Uptime", value: `Total: ${Math.round((Date.now() - CLARAS_BIRTH_TIMESTAMP) / 86400000)} days\nSystem: ${formatBigInterval(Math.round(os.uptime() / 60))}\nProcess: ${formatBigInterval(Math.round(process.uptime() / 60))}` },
+											{ name: "CPU temperature", value: cpuTemp },
+											{ name: "Load averages", value: process.platform !== "win32" ? os.loadavg().map(n => n.toFixed(2)).join(", ") : "[unavailable]" }
+										],
+										color: 0xed1e79
+									}
+								]
+							});
+							break;
 						}
 
-						interaction.reply({
-							embeds: [
-								{
-									title: "Bot stats",
-									fields: [
-										{ name: "Discord websocket latency (ping)", value: `${this.#client.ws.ping}ms` },
-										{ name: "Uptime", value: `Total: ${Math.round((Date.now() - CLARAS_BIRTH_TIMESTAMP) / 86400000)} days\nSystem: ${formatBigInterval(Math.round(os.uptime() / 60))}\nProcess: ${formatBigInterval(Math.round(process.uptime() / 60))}` },
-										{ name: "CPU temperature", value: cpuTemp },
-										{ name: "Load averages", value: process.platform !== "win32" ? os.loadavg().map(n => n.toFixed(2)).join(", ") : "[unavailable]" }
-									],
-									color: 0xed1e79
-								}
-							]
-						});
-						break;
-					}
+						case "help": {
+							const broadcastChannel = interaction.guildId && db.getGuildRecord(interaction.guildId).broadcastChannelID;
 
-					case "help": {
-						const broadcastChannel = interaction.guildId && db.getGuildRecord(interaction.guildId).broadcastChannelID;
-
-						await interaction.reply(`\
+							await interaction.reply(`\
 Hello there! My name is Clara and I watch for changes on [StarrPark.biz](http://starrpark.biz/) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannel ? `<#${broadcastChannel}>` : "the chosen text channel"}.
 
 I was made with the intention of being useful, but I come with **no warranty**. It’s possible that I fail to detect a change or detect one when there is none.
@@ -225,135 +220,151 @@ Commands:
 • \`/invite\`: Send the link for inviting me
 • \`/set_channel\` (requires the Manage Server permission): Set the channel for which to send detections
 • \`/set_mentions\` (requires the Manage Server permission): Change who I should mention when something is detected`);
-						break;
-					}
+							break;
+						}
 
-					case "credits_and_links":
-						await interaction.reply({
-							content: `\
+						case "credits_and_links":
+							await interaction.reply({
+								content: `\
 Credits:
 • Main developer: dd.pardal#3661`,
-							embeds: [
-								{
-									title: "C.L.A.R.A.’s Discord server",
-									description: "My server.",
-									url: "https://discord.gg/rMfURQ98y5",
-									thumbnail: {
-										url: "https://cdn.discordapp.com/icons/834849541303042069/6ea27712cd8be6ddb182dc08346a852e.webp"
+								embeds: [
+									{
+										title: "C.L.A.R.A.’s Discord server",
+										description: "My server.",
+										url: "https://discord.gg/rMfURQ98y5",
+										thumbnail: {
+											url: "https://cdn.discordapp.com/icons/834849541303042069/6ea27712cd8be6ddb182dc08346a852e.webp"
+										}
+									},
+									{
+										title: "Starrchive",
+										description: "A YouTube channel where the WKBRL sounds are uploaded to. (Not affiliated with Supercell.)",
+										url: "https://www.youtube.com/channel/UCVewbwbOQLUofNVpFidGTSA",
+										thumbnail: {
+											url: "https://cdn.discordapp.com/attachments/867972618429538315/887318726725214258/starrchive_logo.webp"
+										}
+									},
+									{
+										title: "WKBRL Discord server",
+										description: "A Discord server for discussing WKBRL and Brawl Stars lore. (Not affiliated with Supercell.)",
+										url: "https://discord.gg/Q3PdCwAKNQ",
+										thumbnail: {
+											url: "https://cdn.discordapp.com/icons/739868777050669056/a_b2404d9081675fc978d6edb6344274c4.gif"
+										}
+									},
+									{
+										title: "C.L.A.R.A.’s GitHub repository",
+										description: "Here you can see my code.",
+										url: "https://github.com/dd-pardal/clara",
+										thumbnail: {
+											url: "https://cdn.discordapp.com/attachments/840924631254171688/900864222177681528/github-mark.png"
+										}
 									}
-								},
-								{
-									title: "Starrchive",
-									description: "A YouTube channel where the WKBRL sounds are uploaded to. (Not affiliated with Supercell.)",
-									url: "https://www.youtube.com/channel/UCVewbwbOQLUofNVpFidGTSA",
-									thumbnail: {
-										url: "https://cdn.discordapp.com/attachments/867972618429538315/887318726725214258/starrchive_logo.webp"
-									}
-								},
-								{
-									title: "WKBRL Discord server",
-									description: "A Discord server for discussing WKBRL and Brawl Stars lore. (Not affiliated with Supercell.)",
-									url: "https://discord.gg/Q3PdCwAKNQ",
-									thumbnail: {
-										url: "https://cdn.discordapp.com/icons/739868777050669056/a_b2404d9081675fc978d6edb6344274c4.gif"
-									}
-								},
-								{
-									title: "C.L.A.R.A.’s GitHub repository",
-									description: "Here you can see my code.",
-									url: "https://github.com/dd-pardal/clara",
-									thumbnail: {
-										url: "https://cdn.discordapp.com/attachments/840924631254171688/900864222177681528/github-mark.png"
-									}
-								}
-							]
-						});
-						break;
+								]
+							});
+							break;
 
-					case "invite":
-						await interaction.reply('[Click here to add me to your server!](<https://wkbrl.netlify.app/clara/invite>) You should also join [my server](<https://discord.gg/rMfURQ98y5>) to be updated about new features and changes.');
-						break;
+						case "invite":
+							await interaction.reply('[Click here to add me to your server!](<https://wkbrl.netlify.app/clara/invite>) You should also join [my server](<https://discord.gg/rMfURQ98y5>) to be updated about new features and changes.');
+							break;
 
-					case "set_channel":
-						checkPermission((interaction) => {
-							const channel = interaction.options.getChannel("channel");
-							if (channel) {
-								if (!(channel instanceof Discord.Channel)) {
-									throw new TypeError("The channel was not serialized.");
-								}
-								if (channel.type !== "GUILD_TEXT" && channel.type !== "GUILD_NEWS") {
-									interaction.reply("The provided channel must be a text channel.");
-								} else if (
-									!channel.permissionsFor(interaction.guild!.me!)?.has([
-										Discord.Permissions.FLAGS.SEND_MESSAGES,
-										Discord.Permissions.FLAGS.VIEW_CHANNEL
-									])
-								) {
-									interaction.reply({ content: "I don’t have permission to send messages in that channel.", ephemeral: true });
+						case "set_channel":
+							await checkPermission(async (interaction) => {
+								const channel = interaction.options.getChannel("channel");
+								if (channel) {
+									if (!(channel instanceof Discord.Channel)) {
+										throw new TypeError("The channel was not serialized.");
+									}
+									if (channel.type !== "GUILD_TEXT" && channel.type !== "GUILD_NEWS") {
+										await interaction.reply("The provided channel must be a text channel.");
+									} else if (
+										!channel.permissionsFor(interaction.guild!.me!)?.has([
+											Discord.Permissions.FLAGS.SEND_MESSAGES,
+											Discord.Permissions.FLAGS.VIEW_CHANNEL
+										])
+									) {
+										await interaction.reply({ content: "I don’t have permission to send messages in that channel.", ephemeral: true });
+									} else {
+										const promises = [];
+
+										const guildInfo = db.getGuildRecord(interaction.guildId);
+										if (guildInfo.broadcastChannelID && guildInfo.statusMessageID) {
+											promises.push(this.#deleteStatusMessage(guildInfo.broadcastChannelID, guildInfo.statusMessageID).catch(() => {/* ignore error */}));
+										}
+										db.updateGuildBroadcastChannel(interaction.guildId, channel.id);
+										promises.push(this.#sendStatusMessage(interaction.guildId, channel.id, this.#getStatusMessage()));
+										promises.push(interaction.reply(`Detections will be sent to <#${channel}>.`));
+
+										await Promise.all(promises);
+									}
 								} else {
-									const guildInfo = db.getGuildRecord(interaction.guildId);
-									if (guildInfo.broadcastChannelID && guildInfo.statusMessageID) {
-										this.#deleteStatusMessage(guildInfo.broadcastChannelID, guildInfo.statusMessageID).catch(() => {/* ignore error */});
-									}
-									db.updateGuildBroadcastChannel(interaction.guildId, channel.id);
-									this.#sendStatusMessage(interaction.guildId, channel.id, this.#getStatusMessage());
-									interaction.reply(`Detections will be sent to <#${channel}>.`);
+									db.updateGuildBroadcastChannel(interaction.guildId, null);
+									await interaction.reply(`Detections will not be announced in this server.`);
 								}
-							} else {
-								db.updateGuildBroadcastChannel(interaction.guildId, null);
-								interaction.reply(`Detections will not be announced in this server.`);
-							}
-						});
-						break;
+							});
+							break;
 
-					case "set_mentions":
-						checkPermission((interaction) => {
-							if (interaction.options.data.length > 0) {
-								const mentions: string[] = interaction.options.data.map((opt) => {
-									if (opt.role?.id === interaction.guildId)
-										return "@everyone";
-									else if (opt.role)
-										return `<@&${opt.role.id}>`;
-									else if (opt.member)
-										return `<@${(opt.member as Discord.GuildMember).id}>`;
-									else if (opt.user)
-										return `<@${opt.user.id}>`;
-									else
-										throw new TypeError(`It wasn't possible to find out the type of the mention with ID ${opt.value}.`);
-								});
-								db.updateGuildAnnouncementMentions(interaction.guildId, mentions.map(s => s + " ").join(""));
-								interaction.reply(`I will mention ${conjunctionFormatter.format(mentions)} when something is detected.`);
-							} else {
-								db.updateGuildAnnouncementMentions(interaction.guildId, "");
-								interaction.reply("I won’t mention anyone when something is detected.");
-							}
-						});
-						break;
+						case "set_mentions":
+							await checkPermission(async (interaction) => {
+								if (interaction.options.data.length > 0) {
+									const mentions: string[] = interaction.options.data.map((opt) => {
+										if (opt.role?.id === interaction.guildId)
+											return "@everyone";
+										else if (opt.role)
+											return `<@&${opt.role.id}>`;
+										else if (opt.member)
+											return `<@${(opt.member as Discord.GuildMember).id}>`;
+										else if (opt.user)
+											return `<@${opt.user.id}>`;
+										else
+											throw new TypeError(`It wasn't possible to find out the type of the mention with ID ${opt.value}.`);
+									});
+									db.updateGuildAnnouncementMentions(interaction.guildId, mentions.map(s => s + " ").join(""));
+									await interaction.reply(`I will mention ${conjunctionFormatter.format(mentions)} when something is detected.`);
+								} else {
+									db.updateGuildAnnouncementMentions(interaction.guildId, "");
+									await interaction.reply("I won’t mention anyone when something is detected.");
+								}
+							});
+							break;
 
-					case "manage":
-						switch (interaction.options.getSubcommand(true)) {
-							case "shutdown": {
-								const reason = interaction.options.getString("reason");
-								tconsole.log(`Shutdown requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
-								interaction.reply("Shutting down…");
-								this.#bot.shutdown();
-								break;
-							}
+						case "manage":
+							switch (interaction.options.getSubcommand(true)) {
+								case "shutdown": {
+									const reason = interaction.options.getString("reason");
+									tconsole.log(`Shutdown requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
+									await interaction.reply("Shutting down…");
+									this.#bot.shutdown();
+									break;
+								}
 
-							case "restart": {
-								const reason = interaction.options.getString("reason");
-								tconsole.log(`Restart requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
-								interaction.reply("Restarting…");
-								this.#bot.restart();
-								break;
+								case "restart": {
+									const reason = interaction.options.getString("reason");
+									tconsole.log(`Restart requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
+									await interaction.reply("Restarting…");
+									this.#bot.restart();
+									break;
+								}
 							}
-						}
-						break;
+							break;
 
-					default:
-						console.log("Unimplemented command. Interaction data: %o", interaction);
-						await interaction.reply({ content: `The command \`${interaction.commandName}\` is not implemented yet. Try again later.`, ephemeral: true });
-						break;
+						default:
+							console.log("Unimplemented command. Interaction data: %o", interaction);
+							await interaction.reply({ content: `This is awkward… The command \`/${interaction.commandName}\` does not exist.`, ephemeral: true });
+							break;
+					}
+				} catch (error) {
+					interaction.reply("An unexpected error has occured. Please try again later.").catch(() => {/* ignore error */});
+					console.log("An unexpected error has occured while responding to an interaction: %o", {
+						interaction: {
+							commandName: interaction.commandName,
+							deferred: interaction.deferred,
+							ephemeral: interaction.ephemeral,
+							options: interaction.options.data
+						},
+						error
+					});
 				}
 			}
 		});
