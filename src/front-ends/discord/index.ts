@@ -210,7 +210,7 @@ export class DiscordFrontEnd implements FrontEnd {
 							const broadcastChannel = interaction.guildId && db.getGuildRecord(interaction.guildId).broadcastChannelID;
 
 							await interaction.reply(`\
-Hello there! My name is Clara and I watch for changes on [StarrPark.biz](http://starrpark.biz/) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannel ? `<#${broadcastChannel}>` : "the chosen text channel"}.
+Hello there! My name is Clara and I watch for changes on [StarrPark.biz](<http://starrpark.biz/>) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannel ? `<#${broadcastChannel}>` : "the chosen text channel"}.
 
 I was made with the intention of being useful, but I come with **no warranty**. It’s possible that I fail to detect a change or detect one when there is none.
 
