@@ -2,17 +2,12 @@
  * @fileoverview Front end for Discord. Announces stuff via messages in user-defined channels and handles all Discord commands.
  */
 
-// I wish discord.js allowed users to send/delete/edit messages by the channel/message IDs without
-// needing to commit the crimes I have committed in this file. Still faster than fetching the channel, though.
-// And no, the channels aren't in the cache for some reason. I don't even care anymore. I'm probably
-// switching to Eris when they add support for interactions.
-
 import * as os from "os";
 
-import * as Discord from "discord.js";
-import { MessageButtonStyles, MessageComponentTypes } from "discord.js/typings/enums.js";
+import * as Eris from "eris";
 
 import { FrontEnd } from "../front-end.js";
+import { Configs } from "../../configs.js";
 import { Bot } from "../../bot.js";
 import { botStatusToStringMap } from "../common/string-maps.js";
 import * as tconsole from "../../util/time-log.js";
@@ -26,9 +21,11 @@ import { formatBigInterval } from "../../util/format-time-interval.js";
 const conjunctionFormatter = new Intl.ListFormat("en", { type: "conjunction" });
 
 export class DiscordFrontEnd implements FrontEnd {
+	#client: Eris.Client;
+
+	#configs: NonNullable<Configs["discord"]>;
 	#db: Database;
 	#bot: Bot;
-	#client: Discord.Client;
 
 	#spbDetector: SPB.SPBChangeDetector | undefined;
 	#youtubeDetector: YT.YoutubeChangeDetector | undefined;
@@ -36,79 +33,80 @@ export class DiscordFrontEnd implements FrontEnd {
 	#statusTimeout: NodeJS.Timeout | undefined;
 
 	constructor({
+		configs,
 		db,
 		bot,
-		client,
 		spbDetector,
 		youtubeDetector
 	}: {
+		configs: NonNullable<Configs["discord"]>;
 		db: Database;
 		bot: Bot;
-		client: Discord.Client;
 		spbDetector?: SPB.SPBChangeDetector | undefined;
 		youtubeDetector?: YT.YoutubeChangeDetector | undefined;
 	}) {
+		this.#configs = configs;
+
+		this.#client = new Eris.Client(this.#configs.auth.token, {
+			intents: Eris.Constants.Intents.guilds
+		});
+		this.#client.connect();
+
 		this.#db = db;
 		this.#bot = bot;
-		this.#client = client;
 
 		this.#spbDetector = spbDetector;
 		this.#youtubeDetector = youtubeDetector;
 
 		// Discord status
 		{
-			const statuses: Discord.ActivityOptions[] = [
-				{ type: "WATCHING", name: "StarrPark.biz" },
-				{ type: "WATCHING", name: "the WKBRL channel" }
+			const statuses: Eris.ActivityPartial<Eris.BotActivityType>[] = [
+				{ type: Eris.Constants.ActivityTypes.WATCHING, name: "StarrPark.biz" },
+				{ type: Eris.Constants.ActivityTypes.WATCHING, name: "the WKBRL channel" }
 			];
 			let i = 0;
 
 			const setStatus = () => {
-				this.#client.user?.setActivity(statuses[i]);
+				this.#client.editStatus(statuses[i]);
 				i = (i + 1) % statuses.length;
 			};
 			setStatus();
 			this.#statusTimeout = setInterval(setStatus, 300_000);
-			for (const shard of this.#client.ws.shards.values()) {
+			for (const shard of this.#client.shards.values()) {
 				shard.on("ready", setStatus);
-				shard.on("resumed", setStatus);
+				shard.on("resume", setStatus);
 			}
 		}
 
 		const readyHandler = async () => {
-			{
-				// Sync guilds with the database
+			// Sync guilds with the database
 
-				const guildIDsFromDB = db.getGuildIDs();
-				const guildIDsFromDiscord = [...this.#client.guilds.cache.keys()];
+			const guildIDsFromDB = db.getGuildIDs();
+			const guildIDsFromDiscord = [...(this.#client.guilds as Map<string, Eris.Guild>).keys()];
 
-				// Addition
-				for (const guildID of guildIDsFromDiscord) {
-					if (!guildIDsFromDB.includes(guildID)) {
-						console.log(`The bot was added to the guild "${this.#client.guilds.cache.get(guildID)!.name}" (ID: ${guildID}).`);
-						db.createGuildRecord(guildID);
-					}
+			// Addition
+			for (const guildID of guildIDsFromDiscord) {
+				if (!guildIDsFromDB.includes(guildID)) {
+					console.log(`The bot was added to the guild "${this.#client.guilds.get(guildID)!.name}" (ID: ${guildID}).`);
+					db.createGuildRecord(guildID);
 				}
-				// Removal
-				for (const guildID of guildIDsFromDB) {
-					if (!guildIDsFromDiscord.includes(guildID)) {
-						console.log(`The bot was removed from the guild with ID ${guildID}.`);
-						db.deleteGuildRecord(guildID);
-					}
+			}
+			// Removal
+			for (const guildID of guildIDsFromDB) {
+				if (!guildIDsFromDiscord.includes(guildID)) {
+					console.log(`The bot was removed from the guild with ID ${guildID}.`);
+					db.deleteGuildRecord(guildID);
 				}
 			}
 		};
-		if (this.#client.readyTimestamp == null) {
-			this.#client.on("ready", readyHandler);
-		} else {
-			readyHandler();
-		}
+		this.#client.on("ready", readyHandler);
+
 		this.#client.on("guildCreate", (guild) => {
 			tconsole.log(`The bot was added to the guild "${guild.name}" (ID: ${guild.id}).`);
 			db.createGuildRecord(guild.id);
 		});
 		this.#client.on("guildDelete", (guild) => {
-			tconsole.log(`The bot was removed from the guild "${guild.name}" (ID: ${guild.id}).`);
+			tconsole.log(`The bot was removed from ${"name" in guild ? `the guild ${guild.name}` : "a guild"} (ID: ${guild.id}).`);
 			db.deleteGuildRecord(guild.id);
 		});
 
@@ -123,6 +121,7 @@ export class DiscordFrontEnd implements FrontEnd {
 		});
 
 		this.#youtubeDetector?.on("change", (change: YT.Change) => {
+			console.log(change);
 			this.#broadcast({
 				content:
 					`I’ve detected a change in ${change.record.displayName ?? change.record.name}:\n` +
@@ -134,12 +133,12 @@ export class DiscordFrontEnd implements FrontEnd {
 					(change.newVideos !== null && change.newVideos > 0 ? `New videos: ${change.newData.newestVideos.slice(0, change.newVideos).reverse().map(video => `https://youtu.be/${video.videoID}`).join(", ")}\n` : ""),
 				components: [
 					{
-						type: MessageComponentTypes.ACTION_ROW,
+						type: Eris.Constants.ComponentTypes.ACTION_ROW,
 						components: [
 							{
-								type: MessageComponentTypes.BUTTON,
+								type: Eris.Constants.ComponentTypes.BUTTON,
 								label: "Check the channel out!",
-								style: MessageButtonStyles.LINK,
+								style: Eris.Constants.ButtonStyles.LINK,
 								url: `https://www.youtube.com/channel/${change.newData.channelID}/${change.descriptionChanged ? "/about" : ""}`
 							}
 						]
@@ -156,47 +155,66 @@ export class DiscordFrontEnd implements FrontEnd {
 			ev.waitUntil(this.#updateStatus());
 		});
 
-
 		// Commands
-		this.#client.on("interactionCreate", async (interaction) => {
-			if (interaction.isCommand()) {
 
-				const checkGuild = <R>(callback: (interaction: Discord.BaseGuildCommandInteraction<"present"> & Discord.CommandInteraction) => R) => {
-					if (interaction.inGuild()) {
-						return callback(interaction);
+		function isCommandInteraction(interaction: Eris.PingInteraction | Eris.CommandInteraction | Eris.ComponentInteraction | Eris.AutocompleteInteraction | Eris.UnknownInteraction): interaction is Eris.CommandInteraction {
+			return interaction.type === Eris.Constants.InteractionTypes.APPLICATION_COMMAND;
+		}
+
+		this.#client.on("interactionCreate", async (interaction) => {
+			if (isCommandInteraction(interaction)) {
+				const checkGuild = <R>(callback: (interaction: Eris.CommandInteraction & { guildID: string; member: Eris.Member; }) => R) => {
+					if (interaction.guildID !== undefined) {
+						return callback(interaction as Eris.CommandInteraction & { guildID: string; member: Eris.Member; });
 					} else {
-						interaction.reply({ content: "You may only use this command inside a server.", ephemeral: true });
+						interaction.createMessage({
+							content: "You may only use this command inside a server.",
+							flags: Eris.Constants.MessageFlags.EPHEMERAL
+						});
 					}
 				};
-				const checkPermission = <R>(callback: (interaction: Discord.BaseGuildCommandInteraction<"present"> & Discord.CommandInteraction) => R) => {
+				const checkPermission = <R>(callback: (interaction: Eris.CommandInteraction & { guildID: string; member: Eris.Member; }) => R) => {
 					return checkGuild((interaction) => {
 						const permissions = interaction.member.permissions;
-						if (permissions instanceof Discord.Permissions && permissions.has(Discord.Permissions.FLAGS.MANAGE_GUILD)) {
+						if (permissions.has("manageGuild")) {
 							return callback(interaction);
 						} else {
-							interaction.reply({ content: "You must have the Manage Server permission in order to use this command.", ephemeral: true });
+							interaction.createMessage({
+								content: "You must have the Manage Server permission in order to use this command.",
+								flags: Eris.Constants.MessageFlags.EPHEMERAL
+							});
 						}
 					});
 				};
 
 				try {
-					switch (interaction.commandName) {
+					switch (interaction.data.name) {
 						case "bot_stats": {
-							let cpuTemp;
-							try {
-								cpuTemp = (await getCPUTemp()).toFixed(0) + " °C";
-							} catch(err) {
-								cpuTemp = "[unavailable]";
+							let latencyString;
+							{
+								const latency = this.#client.shards.reduce((a, shard) => a + shard.latency, 0) / this.#client.shards.size;
+								if (Number.isFinite(latency)) {
+									latencyString = latency.toFixed(0) + "ms";
+								} else {
+									latencyString = "[unavailable]";
+								}
 							}
 
-							await interaction.reply({
+							let cpuTempString;
+							try {
+								cpuTempString = (await getCPUTemp()).toFixed(0) + " °C";
+							} catch(err) {
+								cpuTempString = "[unavailable]";
+							}
+
+							await interaction.createMessage({
 								embeds: [
 									{
 										title: "Bot stats",
 										fields: [
-											{ name: "Discord websocket latency (ping)", value: `${this.#client.ws.ping}ms` },
+											{ name: "Discord websocket latency (ping)", value: latencyString},
 											{ name: "Uptime", value: `Total: ${Math.round((Date.now() - CLARAS_BIRTH_TIMESTAMP) / 86400000)} days\nSystem: ${formatBigInterval(Math.round(os.uptime() / 60))}\nProcess: ${formatBigInterval(Math.round(process.uptime() / 60))}` },
-											{ name: "CPU temperature", value: cpuTemp },
+											{ name: "CPU temperature", value: cpuTempString },
 											{ name: "Load averages", value: process.platform !== "win32" ? os.loadavg().map(n => n.toFixed(2)).join(", ") : "[unavailable]" }
 										],
 										color: 0xed1e79
@@ -207,10 +225,10 @@ export class DiscordFrontEnd implements FrontEnd {
 						}
 
 						case "help": {
-							const broadcastChannel = interaction.guildId && db.getGuildRecord(interaction.guildId).broadcastChannelID;
+							const broadcastChannelID = interaction.guildID && db.getGuildRecord(interaction.guildID).broadcastChannelID;
 
-							await interaction.reply(`\
-Hello there! My name is Clara and I watch for changes on [StarrPark.biz](<http://starrpark.biz/>) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannel ? `<#${broadcastChannel}>` : "the chosen text channel"}.
+							await interaction.createMessage(`\
+Hello there! My name is Clara and I watch for changes on [StarrPark.biz](<http://starrpark.biz/>) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannelID ? `<#${broadcastChannelID}>` : "the chosen text channel"}.
 
 I was made with the intention of being useful, but I come with **no warranty**. It’s possible that I fail to detect a change or detect one when there is none.
 
@@ -224,7 +242,7 @@ Commands:
 						}
 
 						case "credits_and_links":
-							await interaction.reply({
+							await interaction.createMessage({
 								content: `\
 Credits:
 • Main developer: dd.pardal#3661`,
@@ -266,102 +284,108 @@ Credits:
 							break;
 
 						case "invite":
-							await interaction.reply('[Click here to add me to your server!](<https://wkbrl.netlify.app/clara/invite>) You should also join [my server](<https://discord.gg/rMfURQ98y5>) to be updated about new features and changes.');
+							await interaction.createMessage("[Click here to add me to your server!](<https://wkbrl.netlify.app/clara/invite>) You should also join [my server](<https://discord.gg/rMfURQ98y5>) to be updated about new features and changes.");
 							break;
 
 						case "set_channel":
 							await checkPermission(async (interaction) => {
-								const channel = interaction.options.getChannel("channel");
-								if (channel) {
-									if (!(channel instanceof Discord.Channel)) {
-										throw new TypeError("The channel was not serialized.");
-									}
-									if (channel.type !== "GUILD_TEXT" && channel.type !== "GUILD_NEWS") {
-										await interaction.reply("The provided channel must be a text channel.");
-									} else if (
-										!channel.permissionsFor(interaction.guild!.me!)?.has([
-											Discord.Permissions.FLAGS.SEND_MESSAGES,
-											Discord.Permissions.FLAGS.VIEW_CHANNEL
-										])
-									) {
-										await interaction.reply({ content: "I don’t have permission to send messages in that channel.", ephemeral: true });
+								const channelID = (interaction.data.options!.find(o => o.name === "channel") as Eris.InteractionDataOptionsChannel | undefined)?.value;
+								if (channelID) {
+									const channel = this.#client.getChannel(channelID);
+
+									if (channel.type !== Eris.Constants.ChannelTypes.GUILD_TEXT && channel.type !== Eris.Constants.ChannelTypes.GUILD_NEWS) {
+										await interaction.createMessage("The provided channel must be a text channel.");
 									} else {
-										const promises = [];
+										const permissions = channel.permissionsOf(this.#client.user.id);
+										if (!(permissions.has("viewChannel") && permissions.has("sendMessages"))) {
+											await interaction.createMessage({
+												content: "I don’t have permission to send messages in that channel.",
+												flags: Eris.Constants.MessageFlags.EPHEMERAL
+											});
+										} else {
+											const promises = [];
 
-										const guildInfo = db.getGuildRecord(interaction.guildId);
-										if (guildInfo.broadcastChannelID && guildInfo.statusMessageID) {
-											promises.push(this.#deleteStatusMessage(guildInfo.broadcastChannelID, guildInfo.statusMessageID).catch(() => {/* ignore error */}));
+											const guildInfo = db.getGuildRecord(interaction.guildID);
+											if (guildInfo.broadcastChannelID && guildInfo.statusMessageID) {
+												promises.push(this.#deleteStatusMessage(guildInfo.broadcastChannelID, guildInfo.statusMessageID).catch(() => {/* ignore error */}));
+											}
+											db.updateGuildBroadcastChannel(interaction.guildID, channel.id);
+											promises.push(this.#sendStatusMessage(interaction.guildID, channel.id, this.#getStatusMessage()));
+											promises.push(interaction.createMessage(`Detections will be sent to <#${channel.id}>.`));
+
+											await Promise.all(promises);
 										}
-										db.updateGuildBroadcastChannel(interaction.guildId, channel.id);
-										promises.push(this.#sendStatusMessage(interaction.guildId, channel.id, this.#getStatusMessage()));
-										promises.push(interaction.reply(`Detections will be sent to <#${channel}>.`));
-
-										await Promise.all(promises);
 									}
 								} else {
-									db.updateGuildBroadcastChannel(interaction.guildId, null);
-									await interaction.reply(`Detections will not be announced in this server.`);
+									db.updateGuildBroadcastChannel(interaction.guildID, null);
+									await interaction.createMessage(`Detections will not be announced in this server.`);
 								}
 							});
 							break;
 
 						case "set_mentions":
 							await checkPermission(async (interaction) => {
-								if (interaction.options.data.length > 0) {
-									const mentions: string[] = interaction.options.data.map((opt) => {
-										if (opt.role?.id === interaction.guildId)
+								if (interaction.data.options !== undefined && interaction.data.options.length > 0) {
+									const mentions: string[] = (interaction.data.options as Eris.InteractionDataOptionsMentionable[]).map((opt) => {
+										if (opt.value === interaction.guildID)
 											return "@everyone";
-										else if (opt.role)
-											return `<@&${opt.role.id}>`;
-										else if (opt.member)
-											return `<@${(opt.member as Discord.GuildMember).id}>`;
-										else if (opt.user)
-											return `<@${opt.user.id}>`;
+										else if (interaction.data.resolved?.roles?.get(opt.value) !== undefined)
+											return `<@&${opt.value}>`;
+										else if (interaction.data.resolved?.members?.get(opt.value) !== undefined)
+											return `<@${opt.value}>`;
 										else
 											throw new TypeError(`It wasn't possible to find out the type of the mention with ID ${opt.value}.`);
 									});
-									db.updateGuildAnnouncementMentions(interaction.guildId, mentions.map(s => s + " ").join(""));
-									await interaction.reply(`I will mention ${conjunctionFormatter.format(mentions)} when something is detected.`);
+									db.updateGuildAnnouncementMentions(interaction.guildID, mentions.map(s => s + " ").join(""));
+									await interaction.createMessage(`I will mention ${conjunctionFormatter.format(mentions)} when something is detected.`);
 								} else {
-									db.updateGuildAnnouncementMentions(interaction.guildId, "");
-									await interaction.reply("I won’t mention anyone when something is detected.");
+									db.updateGuildAnnouncementMentions(interaction.guildID, "");
+									await interaction.createMessage("I won’t mention anyone when something is detected.");
 								}
 							});
 							break;
 
-						case "manage":
-							switch (interaction.options.getSubcommand(true)) {
+						case "manage": {
+							const subcommand = interaction.data.options![0] as Eris.InteractionDataOptionsSubCommand;
+
+							switch (subcommand.name) {
 								case "shutdown": {
-									const reason = interaction.options.getString("reason");
-									tconsole.log(`Shutdown requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
-									await interaction.reply("Shutting down…");
+									const reason = (subcommand.options?.[0] as Eris.InteractionDataOptionsString)?.value;
+									tconsole.log(`Shutdown requested by ${interaction.member!.username}#${interaction.member!.discriminator} (ID: ${interaction.member!.id})${ reason ? `with reason «${reason}»` : ""}.`);
+									await interaction.createMessage("Shutting down…");
 									this.#bot.shutdown();
 									break;
 								}
 
 								case "restart": {
-									const reason = interaction.options.getString("reason");
-									tconsole.log(`Restart requested by ${interaction.user.username}#${interaction.user.discriminator} (ID: ${interaction.user.id})${ reason ? `with reason «${reason}»` : ""}.`);
-									await interaction.reply("Restarting…");
+									const reason = (subcommand.options?.[0] as Eris.InteractionDataOptionsString)?.value;
+									tconsole.log(`Restart requested by ${interaction.member!.username}#${interaction.member!.discriminator} (ID: ${interaction.member!.id})${ reason ? `with reason «${reason}»` : ""}.`);
+									await interaction.createMessage("Restarting…");
 									this.#bot.restart();
 									break;
 								}
 							}
 							break;
+						}
 
 						default:
-							console.log("Unimplemented command. Interaction data: %o", interaction);
-							await interaction.reply({ content: `This is awkward… The command \`/${interaction.commandName}\` does not exist.`, ephemeral: true });
+							console.log(`Unimplemented command /${interaction.data.name}.`);
+							await interaction.createMessage({
+								content: `This is awkward… The command \`/${interaction.data.name}\` does not exist.`,
+								flags: Eris.Constants.MessageFlags.EPHEMERAL
+							});
 							break;
 					}
 				} catch (error) {
-					interaction.reply("An unexpected error has occured. Please try again later.").catch(() => {/* ignore error */});
+					interaction.createMessage({
+						content: "An unexpected error has occured. Please try again later.",
+						flags: Eris.Constants.MessageFlags.EPHEMERAL
+					}).catch(() => {/* ignore error */});
+
 					console.log("An unexpected error has occured while responding to an interaction: %o", {
 						interaction: {
-							commandName: interaction.commandName,
-							deferred: interaction.deferred,
-							ephemeral: interaction.ephemeral,
-							options: interaction.options.data
+							data: interaction.data,
+							guildID: interaction.guildID
 						},
 						error
 					});
@@ -378,8 +402,7 @@ Credits:
 	 * Sends a status message and updates the DB.
 	 */
 	async #sendStatusMessage(guildID: string, broadcastChannelID: string, statusMessage: string): Promise<void> {
-		// @ts-ignore
-		const msg = new Discord.Message(this.#client, await this.#client.api.channels[broadcastChannelID].messages.post({ data: { content: statusMessage } }));
+		const msg = await this.#client.createMessage(broadcastChannelID, statusMessage);
 		this.#db.updateGuildStatusMessageID(guildID, msg.id);
 	}
 
@@ -390,21 +413,18 @@ Credits:
 		if (guildID !== undefined) {
 			this.#db.updateGuildStatusMessageID(guildID, null);
 		}
-		// @ts-ignore
-		return await new Discord.MessageManager({ client: this.#client, id: broadcastChannelID } as Discord.TextChannel).delete(statusMessageID);
+		return await this.#client.deleteMessage(broadcastChannelID, statusMessageID);
 	}
 
-	async #editStatusMessage(broadcastChannelID: string, statusMessageID: string, statusMessage: string): Promise<Discord.Message> {
-		// @ts-ignore
-		return await new Discord.MessageManager({ client: this.#client, id: broadcastChannelID } as Discord.TextChannel).edit(statusMessageID, { content: statusMessage });
+	async #editStatusMessage(broadcastChannelID: string, statusMessageID: string, statusMessage: string): Promise<Eris.Message> {
+		return this.#client.editMessage(broadcastChannelID, statusMessageID, statusMessage);
 	}
 
 	/**
 	 * Broadcasts a message.
 	 */
-	async #sendBroadcastMessage(broadcastChannelID: string, broadcastMessageOptions: Discord.MessageOptions): Promise<Discord.Message> {
-		// @ts-ignore
-		return new Discord.Message(this.#client, await this.#client.api.channels[broadcastChannelID].messages.post({ data: broadcastMessageOptions }));
+	async #sendBroadcastMessage(broadcastChannelID: string, broadcastMessageOptions: Eris.AdvancedMessageContent): Promise<Eris.Message> {
+		return await this.#client.createMessage(broadcastChannelID, broadcastMessageOptions);
 	}
 
 	async #updateStatus(): Promise<void> {
@@ -418,7 +438,7 @@ Credits:
 					promises.push(
 						this.#editStatusMessage(broadcastChannelID, statusMessageID, statusMessage)
 							.catch((err: unknown) => {
-								if (err instanceof Discord.DiscordAPIError && err.code === 10008) {
+								if (err instanceof Eris.DiscordHTTPError && err.code === 10008) {
 									return this.#sendStatusMessage(guildID, broadcastChannelID, statusMessage);
 								}
 							})
@@ -436,8 +456,8 @@ Credits:
 		await Promise.all(promises);
 	}
 
-	#broadcast(message: Discord.MessageOptions): Promise<(Discord.Message | undefined)[]> {
-		const promises:Promise<(Discord.Message | undefined)>[]  = [];
+	#broadcast(message: Eris.AdvancedMessageContent): Promise<(Eris.Message | undefined)[]> {
+		const promises: Promise<(Eris.Message | undefined)>[]  = [];
 
 		const statusMessage = this.#getStatusMessage();
 
@@ -465,10 +485,6 @@ Credits:
 	destroy(): void {
 		clearInterval(this.#statusTimeout);
 
-		this.#client.destroy();
-
-		this.#client.ws.shards.get(0)?.on("close", () => {
-			tconsole.log("Disconnected from Discord.");
-		});
+		this.#client.disconnect({ reconnect: false });
 	}
 }

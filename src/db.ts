@@ -4,7 +4,6 @@
 
 import SQLite from "better-sqlite3";
 
-import * as Discord from "discord.js";
 import * as SPB from "./starrpark.biz/types.js";
 import * as YT from "./youtube/types.js";
 
@@ -16,9 +15,9 @@ function bigIntToSnowflake(int: BigInt | null) {
 }
 
 export interface GuildRecord {
-	guildID: Discord.Snowflake;
-	broadcastChannelID: Discord.Snowflake | null;
-	statusMessageID: Discord.Snowflake | null;
+	guildID: string;
+	broadcastChannelID: string | null;
+	statusMessageID: string | null;
 }
 
 export class Database {
@@ -53,16 +52,16 @@ export class Database {
 	}
 
 
-	getGuildIDs(): Discord.Snowflake[] {
-		return this.#preparedStatements.getGuildIDs.all().map(o => bigIntToSnowflake(o.guildID)) as Discord.Snowflake[];
+	getGuildIDs(): string[] {
+		return this.#preparedStatements.getGuildIDs.all().map(o => bigIntToSnowflake(o.guildID)) as string[];
 	}
-	getGuildRecord(guildID: Discord.Snowflake): GuildRecord {
+	getGuildRecord(guildID: string): GuildRecord {
 		const record = this.#preparedStatements.getGuildRecord.get(guildID);
 		record.broadcastChannelID = bigIntToSnowflake(record.broadcastChannelID);
 		record.statusMessageID = bigIntToSnowflake(record.statusMessageID);
 		return record;
 	}
-	getBroadcastInfo(): { guildID: Discord.Snowflake; broadcastChannelID: Discord.Snowflake; statusMessageID: Discord.Snowflake | null; announcementMentions: string; }[] {
+	getBroadcastInfo(): { guildID: string; broadcastChannelID: string; statusMessageID: string | null; announcementMentions: string; }[] {
 		const array = this.#preparedStatements.getBroadcastInfo.all();
 		for (const record of array) {
 			record.guildID = bigIntToSnowflake(record.guildID);
@@ -72,20 +71,20 @@ export class Database {
 		return array;
 	}
 
-	updateGuildBroadcastChannel(guildID: Discord.Snowflake, broadcastChannelID: Discord.Snowflake | null): void {
+	updateGuildBroadcastChannel(guildID: string, broadcastChannelID: string | null): void {
 		this.#preparedStatements.updateGuildBroadcastChannel.run(broadcastChannelID, guildID);
 	}
-	updateGuildAnnouncementMentions(guildID: Discord.Snowflake, announcementMentions: string): void {
+	updateGuildAnnouncementMentions(guildID: string, announcementMentions: string): void {
 		this.#preparedStatements.updateGuildAnnouncementMentions.run(announcementMentions, guildID);
 	}
-	updateGuildStatusMessageID(guildID: Discord.Snowflake, statusMessageID: Discord.Snowflake | null): void {
+	updateGuildStatusMessageID(guildID: string, statusMessageID: string | null): void {
 		this.#preparedStatements.updateGuildStatusMessage.run(statusMessageID, guildID);
 	}
 
-	createGuildRecord(guildID: Discord.Snowflake): void {
+	createGuildRecord(guildID: string): void {
 		this.#preparedStatements.createGuildRecord.run(guildID);
 	}
-	deleteGuildRecord(guildID: Discord.Snowflake): void {
+	deleteGuildRecord(guildID: string): void {
 		this.#preparedStatements.deleteGuildRecord.run(guildID);
 	}
 

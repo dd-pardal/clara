@@ -4,7 +4,6 @@
 
 import EventEmitter from "events";
 
-import * as Discord from "discord.js";
 import { TwitterApi } from "twitter-api-v2";
 
 import { loadConfigsFromFileSync } from "./configs.js";
@@ -91,15 +90,10 @@ const youtubeDetector = new YoutubeChangeDetector({
 const frontEnds: FrontEnd[] = [];
 
 if (configs.discord?.enabled) {
-	const discordClient = new Discord.Client({
-		intents: ["GUILDS"]
-	});
-	await discordClient.login(configs.discord.auth.token);
-	tconsole.log("Connected to Discord.");
 	frontEnds.push(new DiscordFrontEnd({
+		configs: configs.discord,
 		db,
 		bot,
-		client: discordClient,
 		spbDetector,
 		youtubeDetector
 	}));

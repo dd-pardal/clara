@@ -10,7 +10,7 @@
   "type": "module",
   "dependencies": {
     "better-sqlite3": "^7.3.1",
-    "discord.js": "^13.0.1",
+    "eris": "^0.16.1",
     "strip-json-comments": "^4.0.0",
     "twitter-api-v2": "^1.1.1"
   },
