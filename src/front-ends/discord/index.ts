@@ -228,9 +228,7 @@ export class DiscordFrontEnd implements FrontEnd {
 							const broadcastChannelID = interaction.guildID && db.getGuildRecord(interaction.guildID).broadcastChannelID;
 
 							await interaction.createMessage(`\
-Hello there! My name is Clara and I watch for changes on [StarrPark.biz](<http://starrpark.biz/>) 24/7 so you don’t have to. In case a change is detected, I send a message to ${broadcastChannelID ? `<#${broadcastChannelID}>` : "the chosen text channel"}.
-
-I was made with the intention of being useful, but I come with **no warranty**. It’s possible that I fail to detect a change or detect one when there is none.
+Hello there! My name is Clara and I watch for changes on [StarrPark.biz](<http://starrpark.biz/>) and on the [WKBRL YouTube channel](<https://www.youtube.com/channel/UCBQi60T2VQLw5mqU9wlTElQ>) so you don’t have to. When a change is detected, I send a message to ${broadcastChannelID ? `<#${broadcastChannelID}>` : "the chosen text channel"}.
 
 Commands:
 • \`/help\`: Show this message
@@ -252,7 +250,15 @@ Credits:
 										description: "My server.",
 										url: "https://discord.gg/rMfURQ98y5",
 										thumbnail: {
-											url: "https://cdn.discordapp.com/icons/834849541303042069/6ea27712cd8be6ddb182dc08346a852e.webp"
+											url: "https://starrchive.netlify.app/assets/images/discord-logo.png"
+										}
+									},
+									{
+										title: "C.L.A.R.A.’s Twitter account",
+										description: "My Twitter account. I also post detections there.",
+										url: "https://twitter.com/ClaraTheBot",
+										thumbnail: {
+											url: "https://starrchive.netlify.app/assets/images/twitter-logo.png"
 										}
 									},
 									{
@@ -260,7 +266,7 @@ Credits:
 										description: "A YouTube channel where the WKBRL sounds are uploaded to. (Not affiliated with Supercell.)",
 										url: "https://www.youtube.com/channel/UCVewbwbOQLUofNVpFidGTSA",
 										thumbnail: {
-											url: "https://cdn.discordapp.com/attachments/867972618429538315/887318726725214258/starrchive_logo.webp"
+											url: "https://starrchive.netlify.app/assets/images/starrchive-logo_256.png"
 										}
 									},
 									{
@@ -268,7 +274,7 @@ Credits:
 										description: "A Discord server for discussing WKBRL and Brawl Stars lore. (Not affiliated with Supercell.)",
 										url: "https://discord.gg/Q3PdCwAKNQ",
 										thumbnail: {
-											url: "https://cdn.discordapp.com/icons/739868777050669056/a_b2404d9081675fc978d6edb6344274c4.gif"
+											url: "https://starrchive.netlify.app/assets/images/server-logo.gif"
 										}
 									},
 									{
@@ -276,7 +282,7 @@ Credits:
 										description: "Here you can see my code.",
 										url: "https://github.com/dd-pardal/clara",
 										thumbnail: {
-											url: "https://cdn.discordapp.com/attachments/840924631254171688/900864222177681528/github-mark.png"
+											url: "https://starrchive.netlify.app/assets/images/github-mark_discord-embed-bg.png"
 										}
 									}
 								]
