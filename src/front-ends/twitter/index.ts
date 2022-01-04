@@ -2,7 +2,7 @@
  * @fileoverview Front end for Twitter. Announces stuff via tweets.
  */
 
-import { TwitterApiReadWrite } from "twitter-api-v2";
+import { TwitterApi, TwitterApiReadWrite } from "twitter-api-v2";
 
 import { FrontEnd } from "../front-end.js";
 import { Bot } from "../../bot.js";
@@ -11,32 +11,40 @@ import { Database } from "../../db.js";
 import { formatUTCTimeDownToSeconds } from "../../util/format-time.js";
 import * as SPB from "../../starrpark.biz/change-detector.js";
 import * as YT from "../../youtube/change-detector.js";
+import { Configs } from "../../configs.js";
 
 const conjunctionFormatter = new Intl.ListFormat("en", { type: "conjunction" });
 
 export class TwitterFrontEnd implements FrontEnd {
+	#client: TwitterApiReadWrite;
+
+	#configs: NonNullable<Configs["twitter"]>;
 	#db: Database;
 	#bot: Bot;
-	#client: TwitterApiReadWrite;
+
 	#spbDetector: SPB.SPBChangeDetector | undefined;
 	#youtubeDetector: YT.YoutubeChangeDetector | undefined;
 
 	constructor({
+		configs,
 		db,
 		bot,
-		client,
 		spbDetector,
 		youtubeDetector
 	}: {
+		configs: NonNullable<Configs["twitter"]>;
 		db: Database;
 		bot: Bot;
-		client: TwitterApiReadWrite;
 		spbDetector?: SPB.SPBChangeDetector | undefined;
 		youtubeDetector?: YT.YoutubeChangeDetector | undefined;
 	}) {
+		this.#configs = configs;
+
+		this.#client = new TwitterApi(configs.auth).readWrite;
+
 		this.#db = db;
 		this.#bot = bot;
-		this.#client = client;
+
 		this.#spbDetector = spbDetector;
 		this.#youtubeDetector = youtubeDetector;
 

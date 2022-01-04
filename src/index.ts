@@ -99,11 +99,10 @@ if (configs.discord?.enabled) {
 	}));
 }
 if (configs.twitter?.enabled) {
-	const twitterClient = new TwitterApi(configs.twitter.auth).readWrite;
 	frontEnds.push(new TwitterFrontEnd({
+		configs: configs.twitter,
 		db,
 		bot,
-		client: twitterClient,
 		spbDetector,
 		youtubeDetector
 	}));
