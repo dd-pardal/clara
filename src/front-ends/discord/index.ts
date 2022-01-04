@@ -52,6 +52,10 @@ export class DiscordFrontEnd implements FrontEnd {
 		});
 		this.#client.connect();
 
+		this.#client.on("error", (err) => {
+			tconsole.log("Eris error: %o", err);
+		});
+
 		this.#db = db;
 		this.#bot = bot;
 
