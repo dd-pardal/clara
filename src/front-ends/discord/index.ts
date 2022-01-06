@@ -299,7 +299,7 @@ Credits:
 
 						case "set_channel":
 							await checkPermission(async (interaction) => {
-								const channelID = (interaction.data.options!.find(o => o.name === "channel") as Eris.InteractionDataOptionsChannel | undefined)?.value;
+								const channelID = (interaction.data.options?.find(o => o.name === "channel") as Eris.InteractionDataOptionsChannel | undefined)?.value;
 								if (channelID) {
 									const channel = this.#client.getChannel(channelID);
 
