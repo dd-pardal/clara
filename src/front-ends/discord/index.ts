@@ -91,7 +91,7 @@ export class DiscordFrontEnd implements FrontEnd {
 			// Addition
 			for (const guildID of guildIDsFromDiscord) {
 				if (!guildIDsFromDB.includes(guildID)) {
-					console.log(`The bot was added to the guild "${this.#client.guilds.get(guildID)!.name}" (ID: ${guildID}).`);
+					console.log(`The bot was added to the guild ${this.#client.guilds.get(guildID)!.name} (ID: ${guildID}).`);
 					db.createGuildRecord(guildID);
 				}
 			}
@@ -106,7 +106,7 @@ export class DiscordFrontEnd implements FrontEnd {
 		this.#client.on("ready", readyHandler);
 
 		this.#client.on("guildCreate", (guild) => {
-			tconsole.log(`The bot was added to the guild "${guild.name}" (ID: ${guild.id}).`);
+			tconsole.log(`The bot was added to the guild ${guild.name} (ID: ${guild.id}).`);
 			db.createGuildRecord(guild.id);
 		});
 		this.#client.on("guildDelete", (guild) => {
@@ -190,6 +190,14 @@ export class DiscordFrontEnd implements FrontEnd {
 						}
 					});
 				};
+
+				tconsole.log(
+					`The /${interaction.data.name} command was used by ` +
+					(interaction.guildID !== undefined ?
+						`${interaction.member!.username}#${interaction.member!.discriminator} (ID: ${interaction.member!.id}) in the guild ${interaction.member!.guild.name} (ID: ${interaction.member!.guild.id}).` :
+						`${interaction.user!.username}#${interaction.user!.discriminator} (ID: ${interaction.user!.id}) via direct messaging.`
+					)
+				);
 
 				try {
 					switch (interaction.data.name) {
@@ -392,7 +400,7 @@ Credits:
 						flags: Eris.Constants.MessageFlags.EPHEMERAL
 					}).catch(() => {/* ignore error */});
 
-					console.log("An unexpected error has occured while responding to an interaction: %o", {
+					tconsole.log("An unexpected error has occured while responding to an interaction: %o", {
 						interaction: {
 							data: interaction.data,
 							guildID: interaction.guildID
