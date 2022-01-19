@@ -167,23 +167,23 @@ export class DiscordFrontEnd implements FrontEnd {
 
 		this.#client.on("interactionCreate", async (interaction) => {
 			if (isCommandInteraction(interaction)) {
-				const checkGuild = <R>(callback: (interaction: Eris.CommandInteraction & { guildID: string; member: Eris.Member; }) => R) => {
+				const checkGuild = async <R>(callback: (interaction: Eris.CommandInteraction & { guildID: string; member: Eris.Member; }) => R) => {
 					if (interaction.guildID !== undefined) {
 						return callback(interaction as Eris.CommandInteraction & { guildID: string; member: Eris.Member; });
 					} else {
-						interaction.createMessage({
+						await interaction.createMessage({
 							content: "You may only use this command inside a server.",
 							flags: Eris.Constants.MessageFlags.EPHEMERAL
 						});
 					}
 				};
 				const checkPermission = <R>(callback: (interaction: Eris.CommandInteraction & { guildID: string; member: Eris.Member; }) => R) => {
-					return checkGuild((interaction) => {
+					return checkGuild(async (interaction) => {
 						const permissions = interaction.member.permissions;
 						if (permissions.has("manageGuild")) {
 							return callback(interaction);
 						} else {
-							interaction.createMessage({
+							await interaction.createMessage({
 								content: "You must have the Manage Server permission in order to use this command.",
 								flags: Eris.Constants.MessageFlags.EPHEMERAL
 							});
