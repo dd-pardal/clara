@@ -4,8 +4,6 @@
 
 import EventEmitter from "events";
 
-import { TwitterApi } from "twitter-api-v2";
-
 import { loadConfigsFromFileSync } from "./configs.js";
 import { Bot, Status } from "./bot.js";
 import { createExtendableEvent } from "./util/extendable-event.js";
