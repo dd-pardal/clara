@@ -11,9 +11,9 @@ export function createExtendableEvent(): {
 			}
 			promises.push(promise);
 		},
-		done: () => {
+		done: async () => {
 			done = true;
-			return Promise.all(promises) as unknown as Promise<void>;
+			await Promise.allSettled(promises);
 		}
 	};
 }
