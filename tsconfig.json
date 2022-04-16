@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"target": "ESNext",
 		"module": "ESNext",
-		"lib": ["ES2020", "DOM"], // "DOM" is necessary because of Puppeteer.
+		"lib": ["ES2020"],
 		"moduleResolution": "node",
 		"allowSyntheticDefaultImports": true,
 
