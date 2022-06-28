@@ -2,8 +2,8 @@
  * @fileoverview Fetches and parses data from YouTube.
  */
 
-// Using PubSubHubbub to get updates in real-time only works for video uploads, so I'm forced to
-// use polling and to parse internal YouTube data. Too bad.
+// Using WebSub to get updates in real-time only works for video uploads, so I'm forced to use
+// polling and to parse internal YouTube data. Too bad.
 
 import * as https from "https";
 import { ChannelData, PartialVideoData } from "./types.js";
@@ -18,7 +18,7 @@ export class YTParsingError extends Error {
 }
 YTParsingError.prototype.name = "YTParsingError";
 
-const NONCE_REGEX = /(?<=<script nonce=").{22}(?=">)/;
+const NONCE_REGEX = /(?<=<script nonce=").+(?=">)/;
 const PLUS_REGEX = /\+/g;
 const IMG_URL_OPTIONS_REGEX = /(?<==).*$/;
 
@@ -51,7 +51,7 @@ export async function fetchChannelData(channelID: string): Promise<ChannelData> 
 		if (nonce === undefined) {
 			throw new Error("Couldn't find the nonce.");
 		}
-		const json = html.match(`(?<=<script nonce="${nonce.replace(PLUS_REGEX, "\\+")}">var ytInitialData = ).+?(?=;</script><link rel=")`)?.[0];
+		const json = html.match(`(?<=<script nonce="${nonce.replace(PLUS_REGEX, "\\+")}">var ytInitialData = )(?:[^"]|"(?:[^\\\\]|\\\\.)*?")+?(?=;)`)?.[0];
 		if (json === undefined) {
 			throw new Error("Couldn't find ytInitialData.");
 		}
