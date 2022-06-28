@@ -56,42 +56,46 @@ export class YoutubeChangeDetector extends EventEmitter {
 
 			const record = this.#records[this.#index!];
 			this.#index = (this.#index! + 1) % this.#records.length;
+
+			let newData;
 			try {
-				const newData = await fetchChannelData(record.channelID);
-
-				const nameChanged = newData.name !== record.name;
-				const descriptionChanged = newData.description !== record.description;
-				const profilePictureChanged = newData.profilePictureURL !== record.profilePictureURL;
-				const bannerChanged = newData.bannerURL !== record.bannerURL;
-				const newVideos = record.newestVideoID === null ? newData.newestVideos.length : (() => {
-					for (let newVideos = 0; newVideos < newData.newestVideos.length; newVideos++) {
-						if (newData.newestVideos[newVideos].videoID === record.newestVideoID) {
-							return newVideos;
-						}
-					}
-					return null;
-				})();
-
-				if (nameChanged || descriptionChanged || profilePictureChanged || bannerChanged || newVideos !== 0) {
-					this.emit("change", {
-						record,
-						newData,
-						nameChanged,
-						descriptionChanged,
-						profilePictureChanged,
-						bannerChanged,
-						newVideos
-					});
-
-					record.name = newData.name;
-					record.description = newData.description;
-					record.profilePictureURL = newData.profilePictureURL;
-					record.bannerURL = newData.bannerURL;
-					record.newestVideoID = newData.newestVideos[0]?.videoID ?? null;
-					this.#updateYTChannelRecord(record);
-				}
+				newData = await fetchChannelData(record.channelID);
 			} catch(err) {
 				// Probably either lost Internet connection or something happened to the channel.
+				tconsole.log(`YT data fetching or parsing error: ${err}`);
+				return;
+			}
+
+			const nameChanged = newData.name !== record.name;
+			const descriptionChanged = newData.description !== record.description;
+			const profilePictureChanged = newData.profilePictureURL !== record.profilePictureURL;
+			const bannerChanged = newData.bannerURL !== record.bannerURL;
+			const newVideos = record.newestVideoID === null ? newData.newestVideos.length : (() => {
+				for (let newVideos = 0; newVideos < newData.newestVideos.length; newVideos++) {
+					if (newData.newestVideos[newVideos].videoID === record.newestVideoID) {
+						return newVideos;
+					}
+				}
+				return null;
+			})();
+
+			if (nameChanged || descriptionChanged || profilePictureChanged || bannerChanged || newVideos !== 0) {
+				this.emit("change", {
+					record,
+					newData,
+					nameChanged,
+					descriptionChanged,
+					profilePictureChanged,
+					bannerChanged,
+					newVideos
+				});
+
+				record.name = newData.name;
+				record.description = newData.description;
+				record.profilePictureURL = newData.profilePictureURL;
+				record.bannerURL = newData.bannerURL;
+				record.newestVideoID = newData.newestVideos[0]?.videoID ?? null;
+				this.#updateYTChannelRecord(record);
 			}
 		};
 		handler();
